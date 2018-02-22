@@ -19,7 +19,7 @@ git clone https://github.com/impulse-point/tap-windows6 tap-windows
 # cmd
 # replace C style path into parms_local and give it double backslashes to escape properly when read by python
 # make sure to replace scratch path with bamboo build dir variable
-"C:\Program Files\Git\bin\bash.exe" -c "buildDir=$(echo 'C:\Users\IEUser\Desktop\scratch' | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g); sed s@##BUILD_DIR##@$buildDir@g 'ovpn3\core\impulse\parms_local.py' > ovpn3/core/win/parms_local.py"
+"C:\Program Files\Git\bin\bash.exe" -c "buildDir=$(echo 'C:\Users\QA\Desktop\scratch' | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g); sed s@##BUILD_DIR##@$buildDir@g 'ovpn3\core\impulse\parms_local.py' > ovpn3/core/win/parms_local.py"
 
 # cmd, from dependencies
 "C:\Program Files\Git\usr\bin\tar.exe" -cvSf lz4-master.tar lz4-master
@@ -29,12 +29,8 @@ git clone https://github.com/impulse-point/tap-windows6 tap-windows
 "C:\Program Files\Git\usr\bin\tar.exe" -cvSf asio-master.tar asio-master
 "C:\Program Files\Git\usr\bin\bzip2.exe" asio-master.tar
 
-# cd asio
-# "C:\Program Files\Git\usr\bin\tar.exe" -cvSf asio-master.tar asio
-# mv asio-master.tar ..
-# cd ..
-# "C:\Program Files\Git\usr\bin\bzip2.exe" asio-master.tar
-
 # cmd, from ovpn3/core/win
+# python 2.7.14
 python buildep.py
+python build.py
 ```
