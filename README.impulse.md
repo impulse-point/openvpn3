@@ -6,6 +6,8 @@ The purpose of this fork is to provide additional build scripts and configuratio
 
 The following are my notes from figuring this process out. The actual build steps are on our local bamboo cluster, but these notes represent my experiments figuring out how to configure that. It is left as future work to clean this up for public consumption.
 
+Windows:
+
 ```
 # requires:
 # visual studio 2015
@@ -59,4 +61,30 @@ python build.py ..\..\..\swig\ovpncli_wrap.cxx
 # output
 # ovpn3/core/win/bin/x86/ovpn3.dll
 # ovpn3/core/win/bin/x64/ovpn3.dll
+```
+
+Mac:
+
+```
+# requires:
+# wget (installed via homebrew)
+
+mkdir -p ~/Desktop/scratch
+cd ~/Desktop/scratch
+
+export O3=$(pwd)/ovpn3
+export DL=$(pwd)/dependencies
+export DEP_DIR=$(pwd)/ovpn3-build
+mkdir -p $DEP_DIR
+
+git clone https://github.com/impulse-point/openvpn3.git $O3/core
+
+OSX_ONLY=1 $O3/core/scripts/mac/build-all
+
+cd $O3/core
+. vars/vars-osx
+. vars/setpath
+export DEP_DIR=$O3/../ovpn3-build
+cd test/ovpncli
+MTLS=1 LZ4=1 ASIO=1 ASIO_DIR=$DEP_DIR/asio build cli
 ```
