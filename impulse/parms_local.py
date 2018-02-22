@@ -7,5 +7,7 @@ PARMS = {
         "asio" : "asio-master",
         "lz4" : "lz4-master",
         "mbedtls" : "mbedtls-master"
-    }
+    },
+    "ARCH" : "##ARCH##",
+    "CPP_EXTRA" : "..\\client\\ovpncli.cpp /LD /Fe##OUTPUT_DLL## /I..\\..\\..\\swig -I..\\client"
 }
