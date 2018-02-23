@@ -70,12 +70,15 @@ Mac:
 # wget (installed via homebrew)
 # brew install gnu-sed --default-names
 
+export PATH="$(brew --prefix llvm)/bin:$PATH"
+
 mkdir -p ~/Desktop/scratch
 cd ~/Desktop/scratch
 
 export O3=$(pwd)/ovpn3
 export DL=$(pwd)/dependencies
 export DEP_DIR=$(pwd)/ovpn3-build
+mkdir -p $DL
 mkdir -p $DEP_DIR
 
 git clone https://github.com/impulse-point/openvpn3.git $O3/core
