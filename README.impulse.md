@@ -107,5 +107,5 @@ cd $O3/core
 export DEP_DIR=$(echo $(cd $O3/../ovpn3-build; pwd))
 SWIG_DIR=$(echo $(cd $O3/../swig; pwd))
 cd $O3/core/client
-MTLS=1 LZ4=1 ASIO=1 ASIO_DIR=$DEP_DIR/asio OUTBIN=ovpncli.dylib EXTRA_CPP="-dynamiclib $SWIG_DIR/ovpncli_wrap.cxx -I$SWIG_DIR -I$O3/core/client" build ovpncli
+MTLS=1 LZ4=1 ASIO=1 ASIO_DIR=$DEP_DIR/asio OUTBIN=ovpncli.dylib EXTRA_CPP="-dynamiclib $SWIG_DIR/ovpncli_wrap.cxx -I$SWIG_DIR -I$O3/core/client -DUSE_TUN_BUILDER" build ovpncli
 ```

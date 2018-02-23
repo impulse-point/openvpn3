@@ -9,5 +9,5 @@ PARMS = {
         "mbedtls" : "mbedtls-master"
     },
     "ARCH" : "##ARCH##",
-    "CPP_EXTRA" : "..\\client\\ovpncli.cpp /LD /Fe##OUTPUT_DLL## /I..\\..\\..\\swig -I..\\client"
+    "CPP_EXTRA" : "..\\client\\ovpncli.cpp /LD /Fe##OUTPUT_DLL## /I..\\..\\..\\swig -I..\\client -DUSE_TUN_BUILDER"
 }
