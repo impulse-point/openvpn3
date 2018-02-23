@@ -75,6 +75,9 @@ export PATH="$(brew --prefix llvm)/bin:$PATH"
 mkdir -p ~/Desktop/scratch
 cd ~/Desktop/scratch
 
+# expect swig .cs and .cxx files in ~/Desktop/scratch/swig
+# download or generate these files here
+
 export O3=$(pwd)/ovpn3
 export DL=$(pwd)/dependencies
 export DEP_DIR=$(pwd)/ovpn3-build
@@ -102,6 +105,7 @@ cd $O3/core
 . vars/vars-osx
 . vars/setpath
 export DEP_DIR=$(echo $(cd $O3/../ovpn3-build; pwd))
-cd $O3/core/test/ovpncli
-MTLS=1 LZ4=1 ASIO=1 ASIO_DIR=$DEP_DIR/asio build cli
+SWIG_DIR=$(echo $(cd $O3/../swig; pwd))
+cd $O3/core/client
+MTLS=1 LZ4=1 ASIO=1 ASIO_DIR=$DEP_DIR/asio OUTBIN=ovpncli.dylib EXTRA_CPP="-dynamiclib $SWIG_DIR/ovpncli_wrap.cxx -I$SWIG_DIR -I$O3/core/client" build ovpncli
 ```
