@@ -30,31 +30,42 @@ cd swig
 swig -c++ -csharp -I..\ovpn3\core\client -I..\ovpn3\core -outcurrentdir ..\ovpn3\core\javacli\ovpncli.i
 
 # cmd
-# replace C style path into parms_local and give it double backslashes to escape properly when read by python
-# make sure to replace scratch path with bamboo build dir variable
-"C:\Program Files\Git\bin\bash.exe" -c "buildDir=$(echo 'C:\Users\QA\Desktop\scratch' | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g | sed s@\\\\\\\@\\\\\\\\\\\\\\\\@g); sed s@##BUILD_DIR##@$buildDir@g 'ovpn3\core\impulse\parms_local.py' > ovpn3/core/win/parms_local.py.paths"
+# replace with real build dir when building in a CI server
+# for visual studio team services this is probably AGENT_BUILDDIRECTORY
+(
+	echo {
+	echo     "buildDir": "%cd:\=\\\\%",
+	echo     "arch": "x86"
+	echo }
+) > parms_local.py.view.x86
+(
+	echo {
+	echo     "buildDir": "%cd:\=\\\\%",
+	echo     "arch": "amd64"
+	echo }
+) > parms_local.py.view.x64
 
-# cmd, from dependencies
-"C:\Program Files\Git\usr\bin\tar.exe" --exclude './.git' -cvSf lz4-master.tar lz4-master
-"C:\Program Files\Git\usr\bin\bzip2.exe" lz4-master.tar
-"C:\Program Files\Git\usr\bin\tar.exe" --exclude './.git' -cvSf mbedtls-master.tar mbedtls-master
-"C:\Program Files\Git\usr\bin\bzip2.exe" mbedtls-master.tar
-"C:\Program Files\Git\usr\bin\tar.exe" --exclude './.git' -cvSf asio-master.tar asio-master
-"C:\Program Files\Git\usr\bin\bzip2.exe" asio-master.tar
+# bash
+cd dependencies
+wget https://github.com/impulse-point/lz4/archive/master.zip -O lz4-master.zip
+wget https://github.com/impulse-point/mbedtls/archive/master.zip -O mbedtls-master.zip
+wget https://github.com/impulse-point/asio/archive/master.zip -O asio-master.zip
+
+# bash
+patch ovpn3/core/win/utils.py ovpn3/core/impulse/utils.py.patch
 
 # cmd, from ovpn3/core/win
 # python 2.7.14
+npm install mustache
 rmdir /S /Q bin
 # for x86
 mkdir bin\x86
-"C:\Program Files\Git\bin\bash.exe" -c "sed s@##ARCH##@x86@g parms_local.py.paths > parms_local.py"
-"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x86\\\\\\\\\\\\\\\\ovpncli.dll@g parms_local.py"
+node_modules\.bin\mustache ..\..\..\parms_local.py.view.x86 ..\impulse\parms_local.py.mustache parms_local.py
 python buildep.py
 python build.py ..\..\..\swig\ovpncli_wrap.cxx
 # for x64
 mkdir bin\x64
-"C:\Program Files\Git\bin\bash.exe" -c "sed s@##ARCH##@amd64@g parms_local.py.paths > parms_local.py"
-"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x64\\\\\\\\\\\\\\\\ovpncli.dll@g parms_local.py"
+node_modules\.bin\mustache ..\..\..\parms_local.py.view.x64 ..\impulse\parms_local.py.mustache parms_local.py
 python buildep.py
 python build.py ..\..\..\swig\ovpncli_wrap.cxx
 

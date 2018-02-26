@@ -1,0 +1,11 @@
+--- a/win/utils.py
++++ b/win/utils.py
+@@ -221,7 +221,7 @@ def vc_cmd(parms, cmd, arch=None, succeed=0):
+     if arch == "x64":
+         arch = "amd64"
+     with ModEnv('PATH', "%s;%s\\VC" % (os.environ['PATH'], parms['MSVC_DIR'])):
+-        status = call('vcvarsall.bat %s && %s' % (arch, cmd), shell=True, succeed=succeed)
++        status = call('set "VSCMD_START_DIR=%%CD%%" && vcvarsall.bat %s && %s' % (arch, cmd), shell=True, succeed=succeed)
+ 
+ def vc_parms(parms, cmd_dict):
+     cmd_dict["dbg_rel_flags"] = "/Zi" if parms['DEBUG'] else "/O2"

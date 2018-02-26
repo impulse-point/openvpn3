@@ -1,0 +1,13 @@
+PARMS = {
+    "OVPN3" : "{{{buildDir}}}\\ovpn3",
+    "TAP" : "{{{buildDir}}}\\tap-windows",
+    "DEP" : "{{{buildDir}}}\\dependencies",
+    "BUILD" : "{{{buildDir}}}\\ovpn3-build",
+    "LIB_VERSIONS" : {
+        "asio" : "asio-master",
+        "lz4" : "lz4-master",
+        "mbedtls" : "mbedtls-master"
+    },
+    "ARCH" : "{{{arch}}}",
+    "CPP_EXTRA" : "..\\client\\ovpncli.cpp /LD /Feovpncli.dll /I..\\..\\..\\.swig -I..\\client"
+}
