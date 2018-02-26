@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup Condition=" $(DefineConstants.Contains(WINDOWS_WPF)) and '$(Platform)' == 'x86' ">
+		<Content Include="$(MSBuildThisFileDirectory)x86\ovpncli.dll">
+			<Link>libfko.dll</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup Condition=" $(DefineConstants.Contains(WINDOWS_WPF)) and ('$(Platform)' == 'x64' or '$(Platform)' == 'AnyCPU') ">
+		<Content Include="$(MSBuildThisFileDirectory)x64\ovpncli.dll">
+			<Link>libfko.dll</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup Condition=" $(DefineConstants.Contains(__MACOS__)) ">
+		<Content Include="$(MSBuildThisFileDirectory)mac\ovpncli.dylib">
+			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).app\Contents\MonoBundle\ovpncli.dylib</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="$(MSBuildThisFileDirectory)mac\ovpncli.dylib">
+			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).appex\Contents\MonoBundle\ovpncli.dylib</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+</Project>
