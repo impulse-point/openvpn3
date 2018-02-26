@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fwknop", "Fwknop\Fwknop.csproj", "{47D96AE3-4ED3-4166-8B4C-52BAD259F53D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVPN", "OpenVPN\OpenVPN.csproj", "{47D96AE3-4ED3-4166-8B4C-52BAD259F53D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FwknopDotNetStandard", "FwknopDotNetStandard\FwknopDotNetStandard.csproj", "{F3860E82-CCBE-4094-BEC3-AC47980114CF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenVPNDotNetStandard", "OpenVPNDotNetStandard\OpenVPNDotNetStandard.csproj", "{F3860E82-CCBE-4094-BEC3-AC47980114CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
