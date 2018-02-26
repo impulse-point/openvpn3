@@ -48,19 +48,19 @@ rmdir /S /Q bin
 # for x86
 mkdir bin\x86
 "C:\Program Files\Git\bin\bash.exe" -c "sed s@##ARCH##@x86@g parms_local.py.paths > parms_local.py"
-"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x86\\\\\\\\\\\\\\\\ovpn3.dll@g parms_local.py"
+"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x86\\\\\\\\\\\\\\\\ovpncli.dll@g parms_local.py"
 python buildep.py
 python build.py ..\..\..\swig\ovpncli_wrap.cxx
 # for x64
 mkdir bin\x64
 "C:\Program Files\Git\bin\bash.exe" -c "sed s@##ARCH##@amd64@g parms_local.py.paths > parms_local.py"
-"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x64\\\\\\\\\\\\\\\\ovpn3.dll@g parms_local.py"
+"C:\Program Files\Git\bin\bash.exe" -c "sed -i s@##OUTPUT_DLL##@bin\\\\\\\\\\\\\\\\x64\\\\\\\\\\\\\\\\ovpncli.dll@g parms_local.py"
 python buildep.py
 python build.py ..\..\..\swig\ovpncli_wrap.cxx
 
 # output
-# ovpn3/core/win/bin/x86/ovpn3.dll
-# ovpn3/core/win/bin/x64/ovpn3.dll
+# ovpn3/core/win/bin/x86/ovpncli.dll
+# ovpn3/core/win/bin/x64/ovpncli.dll
 ```
 
 Mac:
