@@ -35,13 +35,15 @@ swig -c++ -csharp -I..\ovpn3\core\client -I..\ovpn3\core -outcurrentdir ..\ovpn3
 (
 	echo {
 	echo     "buildDir": "%cd:\=\\\\%",
-	echo     "arch": "x86"
+	echo     "arch": "x86",
+	echo     "target": "bin\\\\x86\\\\ovpncli.dll"
 	echo }
 ) > parms_local.py.view.x86
 (
 	echo {
 	echo     "buildDir": "%cd:\=\\\\%",
-	echo     "arch": "amd64"
+	echo     "arch": "amd64",
+	echo     "target": "bin\\\\x64\\\\ovpncli.dll"
 	echo }
 ) > parms_local.py.view.x64
 
