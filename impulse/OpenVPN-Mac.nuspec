@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package >
 	<metadata>
-		<id>Fwknop</id>
+		<id>OpenVPN-Mac</id>
 		<version>1.0.0</version>
-		<title>OpenVPN</title>
+		<title>OpenVPN - Mac</title>
 		<authors>Jeffrey Price</authors>
 		<owners>Impulse Point</owners>
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>

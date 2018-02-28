@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup>
+		<Content Include="$(MSBuildThisFileDirectory)mac\ovpncli.dylib">
+			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).app\Contents\MonoBundle\ovpncli.dylib</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="$(MSBuildThisFileDirectory)mac\ovpncli.dylib">
+			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).appex\Contents\MonoBundle\ovpncli.dylib</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+</Project>

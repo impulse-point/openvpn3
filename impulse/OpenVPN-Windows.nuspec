@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package >
+	<metadata>
+		<id>OpenVPN-Windows</id>
+		<version>1.0.0</version>
+		<title>OpenVPN - Windows</title>
+		<authors>Jeffrey Price</authors>
+		<owners>Impulse Point</owners>
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<description>Wrapper around OpenVPN</description>
+	</metadata>
+	<files>
+		<file src="OpenVPN.targets" target="build"/>
+
+		<file src="..\.build\sources\*.cs" target="src"/>
+
+		<file src="..\.build\win\x86\ovpncli.dll" target="build\x86"/>
+		<file src="..\.build\win\x64\ovpncli.dll" target="build\x64"/>
+
+		<file src="..\.build\csharp\classic\OpenVPN.dll" target="lib\net461"/>
+		<file src="..\.build\csharp\classic\OpenVPN.pdb" target="lib\net461"/>
+	</files>
+</package>

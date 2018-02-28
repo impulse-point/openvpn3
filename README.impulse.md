@@ -4,7 +4,7 @@ The purpose of this fork is to provide additional build scripts and configuratio
 
 ----
 
-The following are my notes from figuring this process out. The actual build steps are on our local bamboo cluster, but these notes represent my experiments figuring out how to configure that. It is left as future work to clean this up for public consumption.
+The following are my notes from figuring this process out. The actual build steps are on our Visual Studio Team Services account, but these notes represent my experiments figuring out how to configure that. It is left as future work to clean this up for public consumption.
 
 Windows:
 
