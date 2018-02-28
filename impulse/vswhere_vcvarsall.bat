@@ -11,5 +11,5 @@ set vcvarsall_path=%InstallDir%\VC\Auxiliary\Build\vcvarsall.bat
 echo vcvarsall.bat should be located at: %vcvarsall_path%
 
 if exist "%vcvarsall_path%" (
-  set "VSCMD_START_DIR=%%CD%%" && "%vcvarsall_path%" %*
+  "%vcvarsall_path%" %*
 )
