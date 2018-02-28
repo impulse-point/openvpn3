@@ -7,7 +7,7 @@ for /f "usebackq tokens=1* delims=: " %%i in (`vswhere -latest -requires Microso
   if /i "%%i"=="installationPath" set InstallDir=%%j
 )
 
-REM set vcvarsall_path=%InstallDir%\VC\Auxiliary\Build\vcvarsall.bat
+set vcvarsall_path=%InstallDir%\VC\Auxiliary\Build\vcvarsall.bat
 REM echo vcvarsall.bat should be located at: %vcvarsall_path%
 
 if exist "%vcvarsall_path%" (
