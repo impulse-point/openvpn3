@@ -5,7 +5,7 @@
          arch = "amd64"
      with ModEnv('PATH', "%s;%s\\VC" % (os.environ['PATH'], parms['MSVC_DIR'])):
 -        status = call('vcvarsall.bat %s && %s' % (arch, cmd), shell=True, succeed=succeed)
-+        status = call('set "VSCMD_START_DIR=%%CD%%" && set "PATH=%s\ovpn3\core\impulse;%%PATH%%" && where_vcvarsall.bat %s && %s' % (os.environ['SYSTEM_DEFAULTWORKINGDIRECTORY'], arch, cmd), shell=True, succeed=succeed)
++        status = call('set "VSCMD_START_DIR=%%CD%%" && set "PATH=%s\tools\vswhere;%s\ovpn3\core\impulse;%%PATH%%" && where_vcvarsall.bat %s && %s' % (os.environ['SYSTEM_DEFAULTWORKINGDIRECTORY'], os.environ['SYSTEM_DEFAULTWORKINGDIRECTORY'], arch, cmd), shell=True, succeed=succeed)
  
  def vc_parms(parms, cmd_dict):
      cmd_dict["dbg_rel_flags"] = "/Zi" if parms['DEBUG'] else "/O2"
