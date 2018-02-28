@@ -10,7 +10,7 @@
 		<description>Wrapper around OpenVPN</description>
 	</metadata>
 	<files>
-		<file src="OpenVPN.targets" target="build"/>
+		<file src="OpenVPN-Windows.targets" target="build"/>
 
 		<file src="..\.build\sources\*.cs" target="src"/>
 
