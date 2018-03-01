@@ -1,0 +1,11 @@
+--- deps/asio/build-asio	2018-02-22 13:45:28.603761454 -0500
++++ deps/asio/build-asio.updated	2018-03-01 07:45:37.132789169 -0500
+@@ -22,7 +22,7 @@
+ PACKAGE=${ASIO_VERSION}
+ FNAME=${ASIO_VERSION}.tar.gz
+ PV=${ASIO_VERSION#*-}
+-URL=https://github.com/chriskohlhoff/asio/archive/${PV}.tar.gz
++URL=https://github.com/impulse-point/asio/archive/${PV}.tar.gz
+ CSUM=${ASIO_CSUM}
+ 
+ download
