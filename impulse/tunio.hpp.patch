@@ -1,0 +1,11 @@
+--- openvpn/tun/tunio.hpp	2018-03-04 13:01:59.012875000 -0500
++++ openvpn/tun/tunio.hpp.updated	2018-03-04 13:09:12.482000200 -0500
+@@ -179,7 +179,7 @@
+ 		  stream->close();
+ 		}
+ 	      else
+-		stream->release();
++		stream->close();
+ 	    }
+ 	}
+     }
