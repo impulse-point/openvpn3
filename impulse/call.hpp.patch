@@ -1,0 +1,11 @@
+--- openvpn/win/call.hpp	2018-03-07 15:46:20.034051781 -0500
++++ openvpn/win/call.hpp.updated	2018-03-07 15:47:01.233735494 -0500
+@@ -117,7 +117,7 @@
+ 			  nullptr,       // process security attributes
+ 			  nullptr,       // primary thread security attributes
+ 			  TRUE,          // handles are inherited
+-			  0,             // creation flags
++			  CREATE_NO_WINDOW,             // creation flags
+ 			  nullptr,       // use parent's environment
+ 			  nullptr,       // use parent's current directory
+ 			  &siStartInfo,  // STARTUPINFO pointer
