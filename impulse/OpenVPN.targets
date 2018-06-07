@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<!-- mac -->
 	<ItemGroup Condition=" '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' ">
 		<Content Include="$(MSBuildThisFileDirectory)mac\libovpncli.dylib">
 			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).app\Contents\MonoBundle\libovpncli.dylib</Link>
@@ -10,6 +11,8 @@
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
+
+	<!-- windows -->
 	<ItemGroup Condition=" '$(OS)' == 'Windows_NT' and '$(Platform)' == 'x86' ">
 		<Content Include="$(MSBuildThisFileDirectory)x86\ovpncli.dll">
 			<Link>ovpncli.dll</Link>
@@ -19,6 +22,14 @@
 	<ItemGroup Condition=" '$(OS)' == 'Windows_NT' and ('$(Platform)' == 'x64' or '$(Platform)' == 'AnyCPU') ">
 		<Content Include="$(MSBuildThisFileDirectory)x64\ovpncli.dll">
 			<Link>ovpncli.dll</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<!-- linux -->
+	<ItemGroup Condition=" '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' ">
+		<Content Include="$(MSBuildThisFileDirectory)linux\libovpncli.so">
+			<Link>libovpncli.so</Link>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
