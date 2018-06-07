@@ -28,8 +28,8 @@
 
 	<!-- linux -->
 	<ItemGroup Condition=" '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' ">
-		<Content Include="$(MSBuildThisFileDirectory)linux\libovpncli.so">
-			<Link>libovpncli.so</Link>
+		<Content Include="$(MSBuildThisFileDirectory)linux\ovpncli.so">
+			<Link>ovpncli.so</Link>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
