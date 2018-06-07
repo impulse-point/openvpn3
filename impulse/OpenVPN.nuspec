@@ -22,7 +22,7 @@
 		<file src="..\.build\win\x64\ovpncli.dll" target="build\x64"/>
 
 		<!-- linux natives -->
-		<file src="..\.build\linux\ovpncli.so" target="build\linux"/>
+		<file src="..\.build\linux\libovpncli.so" target="build\linux"/>
 
 		<!-- mac C# -->
 		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.Mac20"/>
