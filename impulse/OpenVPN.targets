@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="4.0" 
+	xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<!-- mac -->
 	<ItemGroup Condition=" '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' ">
 		<Content Include="$(MSBuildThisFileDirectory)mac\libovpncli.dylib">
@@ -8,6 +9,14 @@
 		</Content>
 		<Content Include="$(MSBuildThisFileDirectory)mac\libovpncli.dylib">
 			<Link>$(DeviceSpecificOutputPath)$(_AppBundleName).appex\Contents\MonoBundle\libovpncli.dylib</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<!-- ios -->
+	<ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|iPhoneSimulator' or '$(Configuration)|$(Platform)' == 'Release|iPhoneSimulator' or '$(Configuration)|$(Platform)' == 'Debug|iPhone' or '$(Configuration)|$(Platform)' == 'Release|iPhone' ">
+		<Content Include="$(MSBuildThisFileDirectory)ios\libovpncli.dylib">
+			<Link>libovpncli.dylib</Link>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>

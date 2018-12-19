@@ -17,6 +17,9 @@
 		<!-- mac natives -->
 		<file src="..\.build\mac\libovpncli.dylib" target="build\mac"/>
 
+		<!-- ios natives -->
+		<file src="..\.build\ios\libovpncli.dylib" target="build\ios"/>
+
 		<!-- windows natives -->
 		<file src="..\.build\win\x86\ovpncli.dll" target="build\x86"/>
 		<file src="..\.build\win\x64\ovpncli.dll" target="build\x64"/>
@@ -27,6 +30,12 @@
 		<!-- mac C# -->
 		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.Mac20"/>
 		<file src="..\.build\csharp\standard\OpenVPN.pdb" target="lib\Xamarin.Mac20"/>
+
+		<!-- ios c# -->
+		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.iOS10"/>
+		<file src="..\.build\csharp\standard\OpenVPN.pdb" target="lib\Xamarin.iOS10"/>
+		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.iOS11"/>
+		<file src="..\.build\csharp\standard\OpenVPN.pdb" target="lib\Xamarin.iOS11"/>
 
 		<!-- generic C# -->
 		<file src="..\.build\csharp\classic\OpenVPN.dll" target="lib\net461"/>
