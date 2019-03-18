@@ -22,12 +22,12 @@
 	</ItemGroup>
 
 	<!-- windows -->
-	<ItemGroup Condition=" '$(OS)' == 'Windows_NT' and '$(Platform)' == 'x86' ">
+	<!-- <ItemGroup Condition=" '$(OS)' == 'Windows_NT' and '$(Platform)' == 'x86' ">
 		<Content Include="$(MSBuildThisFileDirectory)x86\ovpncli.dll">
 			<Link>ovpncli.dll</Link>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
-	</ItemGroup>
+	</ItemGroup> -->
 	<ItemGroup Condition=" '$(OS)' == 'Windows_NT' and ('$(Platform)' == 'x64' or '$(Platform)' == 'AnyCPU') ">
 		<Content Include="$(MSBuildThisFileDirectory)x64\ovpncli.dll">
 			<Link>ovpncli.dll</Link>

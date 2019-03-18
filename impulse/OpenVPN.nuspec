@@ -21,7 +21,7 @@
 		<file src="..\.build\ios\libovpncli.dylib" target="build\ios"/>
 
 		<!-- windows natives -->
-		<file src="..\.build\win\x86\ovpncli.dll" target="build\x86"/>
+		<!-- <file src="..\.build\win\x86\ovpncli.dll" target="build\x86"/> -->
 		<file src="..\.build\win\x64\ovpncli.dll" target="build\x64"/>
 
 		<!-- linux natives -->
