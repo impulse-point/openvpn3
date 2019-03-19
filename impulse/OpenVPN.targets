@@ -42,4 +42,18 @@
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
+
+	<!-- android -->
+	<ItemGroup Condition=" '$(AndroidBuildApplicationPackage)' == 'True' and '$(Platform)' == 'x86' ">
+		<Content Include="$(MSBuildThisFileDirectory)android\android-x86\libovpncli.so">
+			<Link>libfko.so</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup Condition=" '$(AndroidBuildApplicationPackage)' == 'True' and '$(Platform)' == 'ARM' ">
+		<Content Include="$(MSBuildThisFileDirectory)android\android-a7a\libovpncli.so">
+			<Link>libfko.so</Link>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>
