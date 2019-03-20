@@ -48,10 +48,19 @@
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a7a\libovpncli.so">
 			<Abi>armeabi-v7a</Abi>
 		</AndroidNativeLibrary>
+		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a7a\libc++_shared.so">
+			<Abi>armeabi-v7a</Abi>
+		</AndroidNativeLibrary>
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a8a\libovpncli.so">
 			<Abi>arm64-v8a</Abi>
 		</AndroidNativeLibrary>
+		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a8a\libc++_shared.so">
+			<Abi>arm64-v8a</Abi>
+		</AndroidNativeLibrary>
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-x86\libovpncli.so">
+			<Abi>x86</Abi>
+		</AndroidNativeLibrary>
+		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-x86\libc++_shared.so">
 			<Abi>x86</Abi>
 		</AndroidNativeLibrary>
 	</ItemGroup>
