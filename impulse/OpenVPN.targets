@@ -46,15 +46,12 @@
 	<!-- android -->
 	<ItemGroup Condition=" '$(TargetFrameworkIdentifier)' == 'MonoAndroid' ">
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a7a\libovpncli.so">
-			<Link>libovpncli.so</Link>
 			<Abi>armeabi-v7a</Abi>
 		</AndroidNativeLibrary>
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-a8a\libovpncli.so">
-			<Link>libovpncli.so</Link>
 			<Abi>arm64-v8a</Abi>
 		</AndroidNativeLibrary>
 		<AndroidNativeLibrary Include="$(MSBuildThisFileDirectory)android\android-x86\libovpncli.so">
-			<Link>libovpncli.so</Link>
 			<Abi>x86</Abi>
 		</AndroidNativeLibrary>
 	</ItemGroup>
