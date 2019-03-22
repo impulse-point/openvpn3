@@ -47,8 +47,8 @@
 
 		<!-- android C# -->
 		<!-- MonoAndroidXYZ means targeting android version XY.Z or higher -->
-		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.MonoAndroid190"/>
-		<file src="..\.build\csharp\standard\OpenVPN.pdb" target="lib\Xamarin.MonoAndroid190"/>
+		<file src="..\.build\csharp\standard\OpenVPN.dll" target="lib\Xamarin.MonoAndroid210"/>
+		<file src="..\.build\csharp\standard\OpenVPN.pdb" target="lib\Xamarin.MonoAndroid210"/>
 
 		<!-- generic C# -->
 		<file src="..\.build\csharp\classic\OpenVPN.dll" target="lib\net461"/>
