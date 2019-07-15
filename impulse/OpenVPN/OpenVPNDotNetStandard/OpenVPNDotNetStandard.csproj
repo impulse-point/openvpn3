@@ -28,6 +28,7 @@
     <Compile Include="..\..\..\..\..\.swig\ClientAPI_ServerEntryVector.cs" />
     <Compile Include="..\..\..\..\..\.swig\ClientAPI_SessionToken.cs" />
     <Compile Include="..\..\..\..\..\.swig\ClientAPI_Status.cs" />
+    <Compile Include="..\..\..\..\..\.swig\ClientAPI_StringVec.cs" />
     <Compile Include="..\..\..\..\..\.swig\ClientAPI_TransportStats.cs" />
     <Compile Include="..\..\..\..\..\.swig\ClientAPI_TunBuilderBase.cs" />
     <Compile Include="..\..\..\..\..\.swig\ovpncli.cs" />
@@ -35,7 +36,6 @@
     <Compile Include="..\..\..\..\..\.swig\SWIGTYPE_p_openvpn__Stop.cs" />
     <Compile Include="..\..\..\..\..\.swig\SWIGTYPE_p_std__string.cs" />
     <Compile Include="..\..\..\..\..\.swig\SWIGTYPE_p_std__vectorT_openvpn__ClientAPI__KeyValue_t.cs" />
-    <Compile Include="..\..\..\..\..\.swig\SWIGTYPE_p_std__vectorT_std__string_t.cs" />
 
   </ItemGroup>
 
