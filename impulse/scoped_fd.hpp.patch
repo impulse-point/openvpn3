@@ -1,5 +1,5 @@
---- openvpn/common/scoped_fd.hpp	2018-03-04 13:01:46.700703600 -0500
-+++ openvpn/common/scoped_fd.hpp.updated	2018-03-04 13:07:44.487915000 -0500
+--- a/openvpn/common/scoped_fd.hpp
++++ b/openvpn/common/scoped_fd.hpp
 @@ -24,7 +24,7 @@
  #ifndef OPENVPN_COMMON_SCOPED_FD_H
  #define OPENVPN_COMMON_SCOPED_FD_H

@@ -1,6 +1,6 @@
---- deps/lz4/build-lz4	2018-02-22 13:45:28.604761470 -0500
-+++ deps/lz4/build-lz4.updated	2018-03-01 07:46:44.809819386 -0500
-@@ -28,7 +28,7 @@
+--- a/deps/lz4/build-lz4
++++ b/deps/lz4/build-lz4
+@@ -28,7 +28,7 @@ fi
  
  FNAME=${LZ4_VERSION}.tar.gz
  PN=${LZ4_VERSION#*-}

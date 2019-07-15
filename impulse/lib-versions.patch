@@ -1,19 +1,20 @@
---- deps/lib-versions	2018-03-01 07:42:58.434376371 -0500
-+++ deps/lib-versions.updated	2018-03-01 07:43:38.713988365 -0500
-@@ -1,10 +1,10 @@
--export ASIO_VERSION=asio-862aed305dcf91387535519c9549c17630339a12
--export ASIO_CSUM=65eb4e0997795e4c7c76325387311c3b9d211754615c275bfe5ca6e186dc322b
+--- a/deps/lib-versions
++++ b/deps/lib-versions
+@@ -1,11 +1,11 @@
+-export ASIO_VERSION=asio-1-13-0
+-export ASIO_CSUM=54a1208d20f2104dbd6b7a04a9262f5ab649f4b7a9faf7eac4c2294e9e104c06
 +export ASIO_VERSION=asio-master
 +export ASIO_CSUM=cf6efb8638dd510998928d4ad636c9c0cd2a67a160054a0ae49c051ca1cd4f66
  
--export LZ4_VERSION=lz4-1.8.0
--export LZ4_CSUM=2ca482ea7a9bb103603108b5a7510b7592b90158c151ff50a28f1ca8389fccf6
+-export LZ4_VERSION=lz4-1.8.3
+-export LZ4_CSUM=33af5936ac06536805f9745e0b6d61da606a1f8b4cc5c04dd3cbaca3b9b4fc43
 +export LZ4_VERSION=lz4-master
 +export LZ4_CSUM=f888f987020a2ab8a80c5dfb3bc4d3a53739f4029b07a5c9ff8722670073aed1
  
--export MBEDTLS_VERSION=mbedtls-2.6.0
--export MBEDTLS_CSUM=99bc9d4212d3d885eeb96273bcde8ecc649a481404b8d7ea7bb26397c9909687
+-export MBEDTLS_VERSION=mbedtls-2.7.5
+-export MBEDTLS_CSUM=a1302ad9094aabb9880d2755927b466a6bac8e02b68e04dee77321f3859e9b40
 +export MBEDTLS_VERSION=mbedtls-master
 +export MBEDTLS_CSUM=88de3530c35aab1112bf05f5300baa476d283dbae7afa6613f9b7b7a5ed57d61
  
- export OPENSSL_VERSION=openssl-1.0.2h
+ export JSONCPP_VERSION=1.8.4
+ export JSONCPP_CSUM=c49deac9e0933bcb7044f08516861a2d560988540b23de2ac1ad443b219afdb6
