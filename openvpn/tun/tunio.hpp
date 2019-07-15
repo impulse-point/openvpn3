@@ -26,10 +26,11 @@
 
 #include <openvpn/io/io.hpp>
 
+#include <openvpn/common/bigmutex.hpp>
 #include <openvpn/common/size.hpp>
 #include <openvpn/common/rc.hpp>
 #include <openvpn/frame/frame.hpp>
-#include <openvpn/ip/ip.hpp>
+#include <openvpn/ip/ipcommon.hpp>
 #include <openvpn/common/socktypes.hpp>
 #include <openvpn/log/sessionstats.hpp>
 #include <openvpn/tun/tunlog.hpp>
@@ -44,14 +45,15 @@ namespace openvpn {
 
     TunIO(ReadHandler read_handler_arg,
 	  const Frame::Ptr& frame_arg,
-	  const SessionStats::Ptr& stats_arg)
+	  const SessionStats::Ptr& stats_arg,
+	  const size_t frame_context_type=Frame::READ_TUN)
       : stream(nullptr),
 	retain_stream(false),
 	tun_prefix(false),
 	halt(false),
 	read_handler(read_handler_arg),
 	frame(frame_arg),
-	frame_context((*frame_arg)[Frame::READ_TUN]),
+	frame_context((*frame_arg)[frame_context_type]),
 	stats(stats_arg)
       {
       }
@@ -73,7 +75,7 @@ namespace openvpn {
 	      {
 		if (buf.offset() >= 4 && buf.size() >= 1)
 		  {
-		    switch (IPHeader::version(buf[0]))
+		    switch (IPCommon::version(buf[0]))
 		      {
 		      case 4:
 			prepend_pf_inet(buf, PF_INET);
@@ -113,8 +115,9 @@ namespace openvpn {
 	  }
 	  catch (openvpn_io::system_error& e)
 	    {
-	      OPENVPN_LOG_TUN_ERROR("TUN write error: " << e.what());
-	      tun_error(Error::TUN_WRITE_ERROR, &e.code());
+	      OPENVPN_LOG_TUN_ERROR("TUN write exception: " << e.what());
+	      const openvpn_io::error_code code(e.code());
+	      tun_error(Error::TUN_WRITE_ERROR, &code);
 	      return false;
 	    }
 	}
@@ -146,8 +149,9 @@ namespace openvpn {
 	  }
 	  catch (openvpn_io::system_error& e)
 	    {
-	      OPENVPN_LOG_TUN_ERROR("TUN write error: " << e.what());
-	      tun_error(Error::TUN_WRITE_ERROR, &e.code());
+	      OPENVPN_LOG_TUN_ERROR("TUN write exception: " << e.what());
+	      const openvpn_io::error_code code(e.code());
+	      tun_error(Error::TUN_WRITE_ERROR, &code);
 	      return false;
 	    }
 	}
@@ -206,16 +210,16 @@ namespace openvpn {
 
       // queue read on tun device
       stream->async_read_some(frame_context.mutable_buffer(tunfrom->buf),
-			      [self=Ptr(this), tunfrom](const openvpn_io::error_code& error, const size_t bytes_recvd)
+			      [self=Ptr(this), tunfrom=typename PacketFrom::SPtr(tunfrom)](const openvpn_io::error_code& error, const size_t bytes_recvd) mutable
                               {
-                                self->handle_read(tunfrom, error, bytes_recvd);
+                                OPENVPN_ASYNC_HANDLER;
+                                self->handle_read(std::move(tunfrom), error, bytes_recvd);
                               });
     }
 
-    void handle_read(PacketFrom *tunfrom, const openvpn_io::error_code& error, const size_t bytes_recvd)
+    void handle_read(typename PacketFrom::SPtr pfp, const openvpn_io::error_code& error, const size_t bytes_recvd)
     {
       OPENVPN_LOG_TUN_VERBOSE("TunIO::handle_read: " << error.message());
-      typename PacketFrom::SPtr pfp(tunfrom);
       if (!halt)
 	{
 	  if (!error)

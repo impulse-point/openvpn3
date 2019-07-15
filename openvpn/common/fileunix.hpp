@@ -35,12 +35,14 @@
 #include <sys/types.h> // for lseek, open
 #include <sys/stat.h>  // for open
 #include <fcntl.h>     // for open
+#include <cstdint>
 
 #include <openvpn/common/exception.hpp>
 #include <openvpn/common/size.hpp>
 #include <openvpn/common/scoped_fd.hpp>
 #include <openvpn/common/write.hpp>
 #include <openvpn/common/strerror.hpp>
+#include <openvpn/common/modstat.hpp>
 #include <openvpn/buffer/bufread.hpp>
 
 namespace openvpn {
@@ -49,6 +51,7 @@ namespace openvpn {
   // write binary buffer to file
   inline void write_binary_unix(const std::string& fn,
 				const mode_t mode,
+				const std::uint64_t mtime_ns,  // set explicit modification-time in nanoseconds since epoch, or 0 to defer to system
 				const void *buf,
 				const size_t size)
   {
@@ -61,11 +64,16 @@ namespace openvpn {
       }
 
     // write
-    {
-      const ssize_t len = write_retry(fd(), buf, size);
-      if (len != size)
-	throw file_unix_error(fn + " : incomplete write");
-    }
+    if (size)
+      {
+	const ssize_t len = write_retry(fd(), buf, size);
+	if (len != size)
+	  throw file_unix_error(fn + " : incomplete write");
+      }
+
+    // explicit modification time
+    if (mtime_ns)
+      update_file_mod_time_nanoseconds(fd(), mtime_ns);
 
     // close
     {
@@ -77,16 +85,26 @@ namespace openvpn {
 
   inline void write_binary_unix(const std::string& fn,
 				const mode_t mode,
+				const std::uint64_t mtime_ns,
 				const Buffer& buf)
   {
-    write_binary_unix(fn, mode, buf.c_data(), buf.size());
+    write_binary_unix(fn, mode, mtime_ns, buf.c_data(), buf.size());
+  }
+
+  inline void write_binary_unix(const std::string& fn,
+				const mode_t mode,
+				const std::uint64_t mtime_ns,
+				const ConstBuffer& buf)
+  {
+    write_binary_unix(fn, mode, mtime_ns, buf.c_data(), buf.size());
   }
 
   inline void write_text_unix(const std::string& fn,
 			      const mode_t mode,
+			      const std::uint64_t mtime_ns,
 			      const std::string& content)
   {
-    write_binary_unix(fn, mode, content.c_str(), content.length());
+    write_binary_unix(fn, mode, mtime_ns, content.c_str(), content.length());
   }
 
   enum { // MUST be distinct from BufferAllocated flags
@@ -138,6 +156,19 @@ namespace openvpn {
     }
 
     return bp;
+  }
+
+  inline bool read_binary_unix_fast(const std::string& fn,
+				    Buffer& out)
+  {
+    ScopedFD fd(::open(fn.c_str(), O_RDONLY|O_CLOEXEC));
+    if (!fd.defined())
+	return errno;
+    const ssize_t status = ::read(fd(), out.data_end(), out.remaining(0));
+    if (status < 0)
+      return errno;
+    out.inc_size(status);
+    return 0;
   }
 
   inline std::string read_text_unix(const std::string& filename,

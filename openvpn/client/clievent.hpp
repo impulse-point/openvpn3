@@ -41,6 +41,7 @@ namespace openvpn {
       DISCONNECTED=0,
       CONNECTED,
       RECONNECTING,
+      AUTH_PENDING,
       RESOLVE,
       WAIT,
       WAIT_PROXY,
@@ -54,6 +55,7 @@ namespace openvpn {
       PAUSE,
       RESUME,
       RELAY,
+      UNSUPPORTED_FEATURE,
 
       // start of nonfatal errors, must be marked by NONFATAL_ERROR_START below
       TRANSPORT_ERROR,
@@ -66,6 +68,7 @@ namespace openvpn {
       TLS_VERSION_MIN,
       CLIENT_HALT,
       CLIENT_SETUP,
+      TUN_HALT,
       CONNECTION_TIMEOUT,
       INACTIVE_TIMEOUT,
       DYNAMIC_CHALLENGE,
@@ -92,6 +95,7 @@ namespace openvpn {
 	"DISCONNECTED",
 	"CONNECTED",
 	"RECONNECTING",
+	"AUTH_PENDING",
 	"RESOLVE",
 	"WAIT",
 	"WAIT_PROXY",
@@ -105,6 +109,7 @@ namespace openvpn {
 	"PAUSE",
 	"RESUME",
 	"RELAY",
+	"UNSUPPORTED_FEATURE",
 
 	// nonfatal errors
 	"TRANSPORT_ERROR",
@@ -117,6 +122,7 @@ namespace openvpn {
 	"TLS_VERSION_MIN",
 	"CLIENT_HALT",
 	"CLIENT_SETUP",
+	"TUN_HALT",
 	"CONNECTION_TIMEOUT",
 	"INACTIVE_TIMEOUT",
 	"DYNAMIC_CHALLENGE",
@@ -208,6 +214,11 @@ namespace openvpn {
       Reconnecting() : Base(RECONNECTING) {}
     };
 
+    struct AuthPending : public Base
+    {
+      AuthPending() : Base(AUTH_PENDING) {}
+    };
+
     struct GetConfig : public Base
     {
       GetConfig() : Base(GET_CONFIG) {}
@@ -253,6 +264,28 @@ namespace openvpn {
       TLSVersionMinFail() : Base(TLS_VERSION_MIN) {}
     };
 
+    struct UnsupportedFeature : public Base
+    {
+      typedef RCPtr<UnsupportedFeature> Ptr;
+
+      UnsupportedFeature(const std::string& name_arg, const std::string& reason_arg, bool critical_arg)
+	: Base(UNSUPPORTED_FEATURE),
+	  name(name_arg),
+	  reason(reason_arg),
+	  critical(critical_arg) {}
+
+      std::string name;
+      std::string reason;
+      bool critical;
+
+      virtual std::string render() const
+      {
+	std::ostringstream out;
+	out << "name: " << name << ", reason: " << reason << ", critical: " << critical;
+	return out.str();
+      }
+    };
+
     struct Connected : public Base
     {
       typedef RCPtr<Connected> Ptr;
@@ -275,7 +308,8 @@ namespace openvpn {
       {
 	std::ostringstream out;
 	// eg. "godot@foo.bar.gov:443 (1.2.3.4) via TCPv4 on tun0/5.5.1.1"
-	out << user << '@';
+	if (!user.empty())
+	  out << user << '@';
 	if (server_host.find_first_of(':') == std::string::npos)
 	  out << server_host;
 	else
@@ -327,6 +361,11 @@ namespace openvpn {
     struct ClientRestart : public ReasonBase
     {
       ClientRestart(std::string reason) : ReasonBase(CLIENT_RESTART, std::move(reason)) {}
+    };
+
+    struct TunHalt : public ReasonBase
+    {
+      TunHalt(std::string reason) : ReasonBase(TUN_HALT, std::move(reason)) {}
     };
 
     struct RelayError : public ReasonBase

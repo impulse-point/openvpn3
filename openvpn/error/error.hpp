@@ -70,11 +70,13 @@ namespace openvpn {
       PRIMARY_EXPIRE,      // primary key context expired
       TLS_VERSION_MIN,     // peer cannot handshake at our minimum required TLS version
       TLS_AUTH_FAIL,       // tls-auth HMAC verification failed
+      TLS_CRYPT_META_FAIL, // tls-crypt-v2 metadata verification failed
       CERT_VERIFY_FAIL,    // peer certificate verification failure
       PEM_PASSWORD_FAIL,   // incorrect or missing PEM private key decryption password
       AUTH_FAILED,         // general authentication failure
       CLIENT_HALT,         // HALT message from server received
       CLIENT_RESTART,      // RESTART message from server received
+      TUN_HALT,            // halt command from tun interface
       RELAY,               // RELAY message from server received
       RELAY_ERROR,         // RELAY error
       N_PAUSE,             // Number of transitions to Pause state
@@ -145,11 +147,13 @@ namespace openvpn {
 	"PRIMARY_EXPIRE",
 	"TLS_VERSION_MIN",
 	"TLS_AUTH_FAIL",
+	"TLS_CRYPT_META_FAIL",
 	"CERT_VERIFY_FAIL",
 	"PEM_PASSWORD_FAIL",
 	"AUTH_FAILED",
 	"CLIENT_HALT",
 	"CLIENT_RESTART",
+	"TUN_HALT",
 	"RELAY",
 	"RELAY_ERROR",
 	"N_PAUSE",

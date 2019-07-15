@@ -28,6 +28,7 @@
 #include <vector>
 #include <cstring>
 #include <cctype>
+#include <algorithm>
 
 #include <openvpn/common/platform.hpp>
 #include <openvpn/common/size.hpp>
@@ -66,6 +67,18 @@ namespace openvpn {
       strncpy (dest, src, maxlen);
       if (maxlen > 0)
 	dest[maxlen - 1] = 0;
+    }
+
+    // Copy string to dest, make sure dest is always null terminated,
+    // and fill out trailing chars in dest with '\0' up to dest_size.
+    inline void copy_fill (void *dest, const std::string& src, const size_t dest_size)
+    {
+      if (dest_size > 0)
+	{
+	  const size_t ncopy = std::min(dest_size - 1, src.length());
+	  std::memcpy(dest, src.c_str(), ncopy);
+	  std::memset(static_cast<unsigned char *>(dest) + ncopy, 0, dest_size - ncopy);
+	}
     }
 
     inline bool is_true(const std::string& str)
@@ -222,6 +235,16 @@ namespace openvpn {
       return str.find_first_of('\n') != std::string::npos;
     }
 
+    // return the first line (without newline) of a multi-line string
+    inline std::string first_line(const std::string& str)
+    {
+      const size_t pos = str.find_first_of('\n');
+      if (pos != std::string::npos)
+	return str.substr(0, pos);
+      else
+	return str;
+    }
+
     // Define a common interpretation of what constitutes a space character.
     // Return true if c is a space char.
     inline bool is_space(const char c)
@@ -286,7 +309,7 @@ namespace openvpn {
     inline bool contains_non_space_ctrl(const std::string& str)
     {
       for (auto &c : str)
-	if (!is_space(c) && is_ctrl(c))
+	if ((!is_space(c) && is_ctrl(c)) || c == 127)
 	  return true;
       return false;
     }
@@ -298,6 +321,19 @@ namespace openvpn {
 	if (is_space(*i))
 	  return true;
       return false;
+    }
+
+    // remove all spaces in string
+    inline std::string remove_spaces(const std::string& str)
+    {
+      std::string ret;
+      for (std::string::const_iterator i = str.begin(); i != str.end(); ++i)
+	{
+	  char c = *i;
+	  if (!is_space(c))
+	    ret += c;
+	}
+      return ret;
     }
 
     // replace all spaces in string with rep

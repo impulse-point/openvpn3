@@ -32,6 +32,7 @@
 #include <openvpn/common/hostport.hpp>
 #include <openvpn/common/number.hpp>
 #include <openvpn/common/string.hpp>
+#include <openvpn/common/format.hpp>
 #include <openvpn/common/to_string.hpp>
 #include <openvpn/addr/ip.hpp>
 #include <openvpn/transport/protocol.hpp>
@@ -44,6 +45,9 @@ namespace openvpn {
 	SSLUnspecified,
 	SSLOn,
 	SSLOff,
+#ifdef OPENVPN_POLYSOCK_SUPPORTS_ALT_ROUTING
+	AltRouting,
+#endif
       };
 
       std::string directive;
@@ -60,17 +64,32 @@ namespace openvpn {
 	if (!proto.is_local())
 	  ret += ' ' + port;
 	ret += ' ' + std::string(proto.str()) + ' ' + openvpn::to_string(n_threads);
-	if (ssl == SSLOn)
-	  ret += " ssl";
-	else if (ssl == SSLOff)
-	  ret += " !ssl";
+	switch (ssl)
+	  {
+	  case SSLUnspecified:
+	    break;
+	  case SSLOn:
+	    ret += " ssl";
+	    break;
+	  case SSLOff:
+	    ret += " !ssl";
+	    break;
+#ifdef OPENVPN_POLYSOCK_SUPPORTS_ALT_ROUTING
+	  case AltRouting:
+	    ret += " alt";
+	    break;
+#endif
+	  }
 	return ret;
       }
 
       Item port_offset(const unsigned int offset) const
       {
 	Item ret(*this);
-	ret.port = openvpn::to_string(HostPort::parse_port(ret.port, "offset") + offset);
+	if (ret.proto.is_unix()) // unix socket filenames should contain %s for "port" substitution
+	  ret.addr = printfmt(ret.addr, offset);
+	else
+	  ret.port = openvpn::to_string(HostPort::parse_port(ret.port, "offset") + offset);
 	ret.n_threads = 0;
 	return ret;
       }
@@ -192,6 +211,10 @@ namespace openvpn {
 			  }
 			else if (ssl_qualifier == "!ssl")
 			  e.ssl = Item::SSLOff;
+#ifdef OPENVPN_POLYSOCK_SUPPORTS_ALT_ROUTING
+			else if (ssl_qualifier == "alt")
+			  e.ssl = Item::AltRouting;
+#endif
 			else
 			  OPENVPN_THROW(option_error, e.directive << ": unrecognized SSL qualifier");
 		      }
@@ -278,7 +301,7 @@ namespace openvpn {
 	return std::string();
       }
 
-      List expand_ports(const size_t max_size) const
+      List expand_ports_by_n_threads(const size_t max_size) const
       {
 	List ret;
 	for (const auto &e : *this)
@@ -290,6 +313,14 @@ namespace openvpn {
 	      ret.emplace_back(e.port_offset(offset));
 	    } while (++offset < e.n_threads);
 	  }
+	return ret;
+      }
+
+      List expand_ports_by_unit(const unsigned int unit) const
+      {
+	List ret;
+	for (const auto &e : *this)
+	  ret.emplace_back(e.port_offset(unit));
 	return ret;
       }
 

@@ -88,6 +88,7 @@
 #endif
 
 #include <openvpn/init/initprocess.hpp>
+#include <openvpn/common/bigmutex.hpp>
 #include <openvpn/common/size.hpp>
 #include <openvpn/common/platform_string.hpp>
 #include <openvpn/common/count.hpp>
@@ -258,10 +259,10 @@ namespace openvpn {
 	parent = parent_arg;
       }
 
-      virtual bool socket_protect(int socket)
+      bool socket_protect(int socket, IP::Addr endpoint) override
       {
 	if (parent)
-	  return parent->socket_protect(socket);
+	  return parent->socket_protect(socket, endpoint.to_string(), endpoint.is_ipv6());
 	else
 	  return true;
       }
@@ -321,18 +322,28 @@ namespace openvpn {
 	  {
 	    const std::string title = "remote-override";
 	    ClientAPI::RemoteOverride ro;
-	    parent->remote_override(ro);
+	    try {
+	      parent->remote_override(ro);
+	    }
+	    catch (const std::exception& e)
+	      {
+		ro.error = e.what();
+	      }
 	    RemoteList::Item::Ptr ri(new RemoteList::Item);
-	    if (!ro.ip.empty())
-	      ri->set_ip_addr(IP::Addr(ro.ip, title));
-	    if (ro.host.empty())
-	      ro.host = ro.ip;
-	    HostPort::validate_host(ro.host, title);
-	    HostPort::validate_port(ro.port, title);
-	    ri->server_host = std::move(ro.host);
-	    ri->server_port = std::move(ro.port);
-	    ri->transport_protocol = Protocol::parse(ro.proto, Protocol::CLIENT_SUFFIX, title.c_str());
-
+	    if (ro.error.empty())
+	      {
+		if (!ro.ip.empty())
+		  ri->set_ip_addr(IP::Addr(ro.ip, title));
+		if (ro.host.empty())
+		  ro.host = ro.ip;
+		HostPort::validate_host(ro.host, title);
+		HostPort::validate_port(ro.port, title);
+		ri->server_host = std::move(ro.host);
+		ri->server_port = std::move(ro.port);
+		ri->transport_protocol = Protocol::parse(ro.proto, Protocol::CLIENT_SUFFIX, title.c_str());
+	      }
+	    else
+	      throw Exception("remote override exception: " + ro.error);
 	    return ri;
 	  }
 	else
@@ -411,9 +422,11 @@ namespace openvpn {
 	IPv6Setting ipv6;
 	int conn_timeout = 0;
 	bool tun_persist = false;
+	bool wintun = false;
 	bool google_dns_fallback = false;
 	bool synchronous_dns_lookup = false;
 	bool autologin_sessions = false;
+	bool retry_on_auth_failed = false;
 	std::string private_key_password;
 	std::string external_pki_alias;
 	bool disable_client_cert = false;
@@ -423,6 +436,8 @@ namespace openvpn {
 	std::string tls_version_min_override;
 	std::string tls_cert_profile_override;
 	std::string gui_version;
+	std::string sso_methods;
+	bool allow_local_lan_access;
 	ProtoContextOptions::Ptr proto_context_options;
 	PeerInfo::Set::Ptr extra_peer_info;
 	HTTPProxyTransport::Options::Ptr http_proxy_options;
@@ -539,10 +554,12 @@ namespace openvpn {
 	void setup_async_stop_scopes()
 	{
 	  stop_scope_local.reset(new AsioStopScope(*io_context(), async_stop_local(), [this]() {
+	      OPENVPN_ASYNC_HANDLER;
 	      session->graceful_stop();
 	    }));
 
 	  stop_scope_global.reset(new AsioStopScope(*io_context(), async_stop_global(), [this]() {
+	      OPENVPN_ASYNC_HANDLER;
 	      trigger_async_stop_local();
 	    }));
 	}
@@ -651,9 +668,11 @@ namespace openvpn {
 	state->port_override = config.portOverride;
 	state->conn_timeout = config.connTimeout;
 	state->tun_persist = config.tunPersist;
+	state->wintun = config.wintun;
 	state->google_dns_fallback = config.googleDnsFallback;
 	state->synchronous_dns_lookup = config.synchronousDnsLookup;
 	state->autologin_sessions = config.autologinSessions;
+	state->retry_on_auth_failed = config.retryOnAuthFailed;
 	state->private_key_password = config.privateKeyPassword;
 	if (!config.protoOverride.empty())
 	  state->proto_override = Protocol::parse(config.protoOverride, Protocol::NO_SUFFIX);
@@ -669,7 +688,9 @@ namespace openvpn {
 	state->force_aes_cbc_ciphersuites = config.forceAesCbcCiphersuites;
 	state->tls_version_min_override = config.tlsVersionMinOverride;
 	state->tls_cert_profile_override = config.tlsCertProfileOverride;
+	state->allow_local_lan_access = config.allowLocalLanAccess;
 	state->gui_version = config.guiVersion;
+	state->sso_methods = config.ssoMethods;
 	state->alt_proxy = config.altProxy;
 	state->dco = config.dco;
 	state->echo = config.echo;
@@ -843,6 +864,9 @@ namespace openvpn {
 #endif
       Log::Context log_context(this);
 #endif
+
+      OPENVPN_LOG(ClientAPI::OpenVPNClient::platform());
+
       return do_connect();
     }
 
@@ -918,9 +942,11 @@ namespace openvpn {
       cc.ipv6 = state->ipv6;
       cc.conn_timeout = state->conn_timeout;
       cc.tun_persist = state->tun_persist;
+      cc.wintun = state->wintun;
       cc.google_dns_fallback = state->google_dns_fallback;
       cc.synchronous_dns_lookup = state->synchronous_dns_lookup;
       cc.autologin_sessions = state->autologin_sessions;
+      cc.retry_on_auth_failed = state->retry_on_auth_failed;
       cc.proto_context_options = state->proto_context_options;
       cc.http_proxy_options = state->http_proxy_options;
       cc.alt_proxy = state->alt_proxy;
@@ -938,8 +964,10 @@ namespace openvpn {
       cc.tls_version_min_override = state->tls_version_min_override;
       cc.tls_cert_profile_override = state->tls_cert_profile_override;
       cc.gui_version = state->gui_version;
+      cc.sso_methods = state->sso_methods;
       cc.extra_peer_info = state->extra_peer_info;
       cc.stop = state->async_stop_local();
+      cc.allow_local_lan_access = state->allow_local_lan_access;
 #ifdef OPENVPN_GREMLIN
       cc.gremlin_config = state->gremlin_config;
 #endif
@@ -989,6 +1017,15 @@ namespace openvpn {
 	      status.message = "Missing External PKI alias";
 	      return;
 	    }
+	}
+#endif
+
+#ifdef USE_OPENSSL
+      if (state->options.exists("allow-name-constraints"))
+	{
+	  ClientEvent::Base::Ptr ev = new ClientEvent::UnsupportedFeature("allow-name-constraints",
+									  "Always verified correctly with OpenSSL", false);
+	  state->events->add_event(std::move(ev));
 	}
 #endif
 
@@ -1112,11 +1149,12 @@ namespace openvpn {
 	}
     }
 
-    OPENVPN_CLIENT_EXPORT bool OpenVPNClient::sign(const std::string& data, std::string& sig)
+    OPENVPN_CLIENT_EXPORT bool OpenVPNClient::sign(const std::string& data, std::string& sig, const std::string& algorithm)
     {
       ExternalPKISignRequest req;
       req.data = data;
       req.alias = state->external_pki_alias;
+      req.algorithm = algorithm;
       external_pki_sign_request(req); // call out to derived class for RSA signature
       if (!req.error)
 	{
@@ -1349,7 +1387,9 @@ namespace openvpn {
 #ifdef OPENVPN_GREMLIN
       ret += " GREMLIN";
 #endif
+#ifdef OPENVPN_DEBUG
       ret += " built on " __DATE__ " " __TIME__;
+#endif
       return ret;
     }
 

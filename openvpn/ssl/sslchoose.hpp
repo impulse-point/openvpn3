@@ -26,6 +26,7 @@
 #include <openvpn/openssl/crypto/api.hpp>
 #include <openvpn/openssl/ssl/sslctx.hpp>
 #include <openvpn/openssl/util/rand.hpp>
+#include <openvpn/openssl/util/pem.hpp>
 #endif
 
 #ifdef USE_APPLE_SSL
@@ -40,9 +41,13 @@
 #include <openvpn/mbedtls/crypto/api.hpp>
 #include <openvpn/mbedtls/ssl/sslctx.hpp>
 #include <openvpn/mbedtls/util/rand.hpp>
+#ifdef HAVE_OPENVPN_COMMON
+#include <openvpn/mbedtls/ssl/sslctxnc.hpp>
+#endif
 #ifdef OPENVPN_PLATFORM_UWP
 #include <openvpn/mbedtls/util/uwprand.hpp>
 #endif
+#include <openvpn/mbedtls/util/pem.hpp>
 #endif
 
 #ifdef USE_MBEDTLS_APPLE_HYBRID
@@ -56,12 +61,17 @@ namespace openvpn {
 #if defined(USE_MBEDTLS)
 #define SSL_LIB_NAME "MbedTLS"
     typedef MbedTLSCryptoAPI CryptoAPI;
-    typedef MbedTLSContext SSLAPI;
+    #ifdef HAVE_OPENVPN_COMMON
+      typedef MbedTLSContextNameConstraints SSLAPI;
+    #else
+      typedef MbedTLSContext SSLAPI;
+    #endif
 #if defined OPENVPN_PLATFORM_UWP
     typedef MbedTLSRandomWithUWPEntropy RandomAPI;
 #else
     typedef MbedTLSRandom RandomAPI;
 #endif
+    typedef MbedTLSPEM PEMAPI;
 #elif defined(USE_MBEDTLS_APPLE_HYBRID)
     // Uses Apple framework for CryptoAPI and MbedTLS for SSLAPI and RandomAPI
 #define SSL_LIB_NAME "MbedTLSAppleHybrid"
@@ -78,6 +88,7 @@ namespace openvpn {
     typedef OpenSSLCryptoAPI CryptoAPI;
     typedef OpenSSLContext SSLAPI;
     typedef OpenSSLRandom RandomAPI;
+    typedef OpenSSLPEM PEMAPI;
 #else
 #error no SSL library defined
 #endif

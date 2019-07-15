@@ -169,6 +169,14 @@ namespace openvpn {
       // Passed to server as IV_GUI_VER.
       std::string guiVersion;
 
+      // Set to a comma seperated list of supported SSO mechanisms that may
+      // be signalled via INFO_PRE to the client.
+      // "openurl" is to continue authentication by opening an url in a browser
+      // "crtext" gives a challenge response in text format that needs to
+      // responded via control channel. (
+      // Passed to the server as IV_SSO
+      std::string ssoMethods;
+
       // Use a different server than that specified in "remote"
       // option of profile
       std::string serverOverride;
@@ -202,6 +210,10 @@ namespace openvpn {
 
       // Enable autologin sessions
       bool autologinSessions = true;
+
+      // If true, consider AUTH_FAILED to be a non-fatal error,
+      // and retry the connection after a pause.
+      bool retryOnAuthFailed = false;
 
       // An ID used for get-certificate and RSA signing callbacks
       // for External PKI profiles.
@@ -278,6 +290,10 @@ namespace openvpn {
       // pass through control channel INFO notifications via "INFO" event
       bool info = false;
 
+      // Allow access to local LAN. This is for platforms like
+      // Android that disable local LAN access by default.
+      bool allowLocalLanAccess = false;
+
       // Periodic convenience clock tick in milliseconds.
       // Will call clock_tick() at a frequency defined by this parameter.
       // Set to 0 to disable.
@@ -285,6 +301,9 @@ namespace openvpn {
 
       // Gremlin configuration (requires that the core is built with OPENVPN_GREMLIN)
       std::string gremlinConfig;
+
+      // Use wintun instead of tap-windows6 on Windows
+      bool wintun = false;
     };
 
     // used to communicate VPN events such as connect, disconnect, etc.
@@ -395,12 +414,16 @@ namespace openvpn {
     };
 
     // Used to request an RSA signature.
-    // Data will be prefixed by an optional PKCS#1 digest prefix
+    // algorithm will determinate what signature is expected:
+    // RSA_PKCS1_PADDING means that
+    // data will be prefixed by an optional PKCS#1 digest prefix
     // per RFC 3447.
+    // RSA_NO_PADDING mean so no padding should be done be the callee
     struct ExternalPKISignRequest : public ExternalPKIRequestBase
     {
       std::string data;  // data rendered as base64 (client reads)
       std::string sig;   // RSA signature, rendered as base64 (client writes)
+      std::string algorithm;
     };
 
     // used to override "remote" directives
@@ -411,6 +434,7 @@ namespace openvpn {
       std::string ip;     //   or ip must be defined (or both)
       std::string port;
       std::string proto;
+      std::string error;  // if non-empty, indicates an error
     };
 
     namespace Private {
@@ -461,7 +485,8 @@ namespace openvpn {
 
       // Callback to "protect" a socket from being routed through the tunnel.
       // Will be called from the thread executing connect().
-      virtual bool socket_protect(int socket) = 0;
+      // The remote and ipv6 are the remote host this socket will connect to
+      virtual bool socket_protect(int socket, std::string remote, bool ipv6) = 0;
 
       // Primary VPN client connect method, doesn't return until disconnect.
       // Should be called by a worker thread.  This method will make callbacks
@@ -543,7 +568,7 @@ namespace openvpn {
       virtual bool remote_override_enabled();
       virtual void remote_override(RemoteOverride&);
 
-      // Periodic convenience clock tick, controlled by Config::clock_tick_ms
+      // Periodic convenience clock tick, controlled by Config::clockTickMS
       virtual void clock_tick();
 
       // Do a crypto library self test
@@ -591,7 +616,7 @@ namespace openvpn {
       void on_disconnect();
 
       // from ExternalPKIBase
-      virtual bool sign(const std::string& data, std::string& sig);
+      virtual bool sign(const std::string& data, std::string& sig, const std::string& algorithm);
 
       // disable copy and assignment
       OpenVPNClient(const OpenVPNClient&) = delete;

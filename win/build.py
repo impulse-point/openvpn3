@@ -39,10 +39,11 @@ def build(parms, srcfile, unit_test=False):
     # onto VC command line.
     options = {
         "ovpn3"   : parms['OVPN3'],
-        "tap"     : os.path.join(parms['TAP'], 'src'),
+        "tap" : os.path.join(build_dir(parms), "tap-windows", "src"),
         "tap_component_id" : parms['TAP_WIN_COMPONENT_ID'],
         "asio"    : os.path.join(build_dir(parms), "asio"),
         "mbedtls" : os.path.join(build_dir(parms), "mbedtls"),
+        "openssl" : os.path.join(build_dir(parms), "openssl"),
         "lz4" : os.path.join(build_dir(parms), "lz4", "lib"),
         "srcfile" : srcfile,
         "extra_defs" : parms['CPP_EXTRA'],
@@ -62,7 +63,7 @@ def build(parms, srcfile, unit_test=False):
         options['extra_lib'] += " fwpuclnt.lib"
 
     # Add jsoncpp (optional)
-    if 'jsoncpp' in parms['LIB_VERSIONS']:
+    if parms.get('USE_JSONCPP'):
         options["jsoncpp"] = os.path.join(build_dir(parms), "jsoncpp")
         options['extra_inc'] += " /DHAVE_JSONCPP /I %(jsoncpp)s/dist" % options
         options['extra_lib_path'] += " /LIBPATH:%(jsoncpp)s/dist" % options
@@ -77,17 +78,23 @@ def build(parms, srcfile, unit_test=False):
     if parms.get("CONNECT"):
         options['extra_inc'] += " /I " + os.path.join(parms['OVPN3'], "common")
 
+    if parms.get("USE_OPENSSL"):
+        options['extra_inc'] += ' /DUSE_OPENSSL /I %s' % os.path.join(options['openssl'], 'inc32')
+        options['extra_lib_path'] += ' /LIBPATH:%s' % os.path.join(options['openssl'], 'out32dll')
+        options['extra_lib'] += ' libeay32.lib ssleay32.lib'
+    else:
+        options['extra_inc'] += ' /DUSE_MBEDTLS /I %s' % os.path.join(options['mbedtls'], 'include')
+        options['extra_lib_path'] += ' /LIBPATH:%s' % os.path.join(options['mbedtls'], 'library')
+        options['extra_lib'] += ' mbedtls.lib'
+
     # build it
-    vc_cmd(parms, r"cl %(extra_defs)s /DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DUSE_ASIO /DASIO_STANDALONE /DASIO_NO_DEPRECATED /I %(asio)s\asio\include /DUSE_MBEDTLS /I %(mbedtls)s\include /DHAVE_LZ4 /I %(lz4)s%(extra_inc)s -DTAP_WIN_COMPONENT_ID=%(tap_component_id)s /I %(tap)s /I %(ovpn3)s\core /EHsc %(link_static_dynamic_flags)s /W0 %(dbg_rel_flags)s /nologo %(srcfile)s /link /LIBPATH:%(mbedtls)s\library /LIBPATH:%(lz4)s%(extra_lib_path)s mbedtls.lib lz4.lib%(extra_lib)s ws2_32.lib crypt32.lib iphlpapi.lib winmm.lib user32.lib gdi32.lib advapi32.lib wininet.lib shell32.lib ole32.lib rpcrt4.lib" % options, arch=os.environ.get("ARCH"))
+    vc_cmd(parms, r"cl %(extra_defs)s /DNOMINMAX /bigobj /D_CRT_SECURE_NO_WARNINGS /DUSE_ASIO /DASIO_STANDALONE /DASIO_NO_DEPRECATED /I %(asio)s\asio\include /DHAVE_LZ4 /I %(lz4)s %(extra_inc)s -DTAP_WIN_COMPONENT_ID=%(tap_component_id)s /I %(tap)s /I %(ovpn3)s\core /EHsc %(link_static_dynamic_flags)s /W0 %(dbg_rel_flags)s /nologo %(srcfile)s /link /LIBPATH:%(lz4)s%(extra_lib_path)s lz4.lib%(extra_lib)s ws2_32.lib crypt32.lib iphlpapi.lib winmm.lib user32.lib gdi32.lib advapi32.lib wininet.lib shell32.lib ole32.lib rpcrt4.lib Wtsapi32.lib" % options, arch=os.environ.get("ARCH"))
 
 if __name__ == "__main__":
     import sys
-    from parms import PARMS
 
-    # some parameters might be redefined, like in Jenkins multibranch pipeline case
-    PARMS['BUILD'] = os.environ.get('BUILD', PARMS['BUILD'])
-    PARMS['OVPN3'] = os.environ.get('OVPN3', PARMS['OVPN3'])
+    params = read_params()
 
-    src = src_fn_argv(PARMS, sys.argv[1:])
+    src = src_fn_argv(params, sys.argv[1:])
     unit_test = is_unit_test(sys.argv[1:])
-    build(PARMS, src, unit_test)
+    build(params, src, unit_test)

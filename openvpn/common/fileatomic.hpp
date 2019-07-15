@@ -30,7 +30,8 @@
 #error atomic file methods not supported on Windows
 #endif
 
-#include <stdio.h> // for rename()
+#include <stdio.h>  // for rename()
+#include <unistd.h> // for unlink()
 #include <errno.h>
 #include <cstring>
 
@@ -47,7 +48,8 @@ namespace openvpn {
   inline void write_binary_atomic(const std::string& fn,
 				  const std::string& tmpdir,
 				  const mode_t mode,
-				  const Buffer& buf,
+				  const std::uint64_t mtime_ns,  // set explicit modification-time in nanoseconds since epoch, or 0 to defer to system
+				  const ConstBuffer& buf,
 				  RandomAPI& rng)
   {
     // generate temporary filename
@@ -56,14 +58,25 @@ namespace openvpn {
     const std::string tfn = path::join(tmpdir, '.' + path::basename(fn) + '.' + render_hex(data, sizeof(data)));
 
     // write to temporary file
-    write_binary_unix(tfn, mode, buf);
+    write_binary_unix(tfn, mode, mtime_ns, buf);
 
     // then move into position
     if (::rename(tfn.c_str(), fn.c_str()) == -1)
       {
 	const int eno = errno;
+	::unlink(tfn.c_str());  // move failed, so delete the temporary file
 	OPENVPN_THROW(file_unix_error, "error moving '" << tfn << "' -> '" << fn << "' : " << strerror_str(eno));
       }
+  }
+
+  inline void write_binary_atomic(const std::string& fn,
+				  const std::string& tmpdir,
+				  const mode_t mode,
+				  const std::uint64_t mtime_ns,
+				  const Buffer& buf,
+				  RandomAPI& rng)
+  {
+    return write_binary_atomic(fn, tmpdir, mode, mtime_ns, const_buffer_ref(buf), rng);
   }
 }
 

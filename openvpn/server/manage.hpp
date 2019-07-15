@@ -55,7 +55,7 @@ namespace openvpn {
       virtual void auth_request(const AuthCreds::Ptr& auth_creds,
 				const AuthCert::Ptr& auth_cert,
 				const PeerAddr::Ptr& peer_addr) = 0;
-      virtual void push_request(const ProtoContext::Config::Ptr& pconf) = 0;
+      virtual void push_request(ProtoContext::Config::Ptr pconf) = 0;
 
       // INFO notification
       virtual void info_request(const std::string& imsg) = 0;
@@ -85,8 +85,10 @@ namespace openvpn {
       // set ACL index for user
       virtual void set_acl_index(const int acl_index,
 				 const std::string* username,
-				 const bool challenge,
-				 const bool throw_on_error) = 0;
+				 const bool challenge) = 0;
+
+      // notify of local user properties update
+      virtual void userprop_local_update() = 0;
     };
 
     // Base class for the client instance receiver.  Note that all
@@ -113,11 +115,20 @@ namespace openvpn {
       // send control channel message
       virtual void post_cc_msg(BufferPtr&& msg) = 0;
 
+      // schedule a low-level connection disconnect in seconds
+      virtual void schedule_disconnect(const unsigned int seconds) = 0;
+
+      // schedule an auth pending disconnect in seconds
+      virtual void schedule_auth_pending_timeout(const unsigned int seconds) = 0;
+
       // set up relay to target
       virtual void relay(const IP::Addr& target, const int port) = 0;
 
       // get client bandwidth stats
       virtual PeerStats stats_poll() = 0;
+
+      // return true if management layer should preserve session ID
+      virtual bool should_preserve_session_id() = 0;
 
       // get native reference to client instance
       virtual TunClientInstance::NativeHandle tun_native_handle() = 0;

@@ -49,6 +49,7 @@
 #include <openvpn/common/count.hpp>
 #include <openvpn/common/string.hpp>
 #include <openvpn/common/base64.hpp>
+#include <openvpn/ip/ptb.hpp>
 #include <openvpn/tun/client/tunbase.hpp>
 #include <openvpn/transport/client/transbase.hpp>
 #include <openvpn/transport/client/relay.hpp>
@@ -376,15 +377,24 @@ namespace openvpn {
 	  // encrypt packet
 	  if (buf.size())
 	    {
-	      Base::data_encrypt(buf);
-	      if (buf.size())
+	      const ProtoContext::Config& c = Base::conf();
+	      if (c.mss_inter > 0 && buf.size() > c.mss_inter)
 		{
-		  // send packet via transport to destination
-		  OPENVPN_LOG_CLIPROTO("Transport SEND " << server_endpoint_render() << ' ' << Base::dump_packet(buf));
-		  if (transport->transport_send(buf))
-		    Base::update_last_sent();
-		  else if (halt)
-		    return;
+		  Ptb::generate_icmp_ptb(buf, c.mss_inter);
+		  tun->tun_send(buf);
+		}
+	      else
+		{
+		  Base::data_encrypt(buf);
+		  if (buf.size())
+		  {
+		    // send packet via transport to destination
+		    OPENVPN_LOG_CLIPROTO("Transport SEND " << server_endpoint_render() << ' ' << Base::dump_packet(buf));
+		    if (transport->transport_send(buf))
+		      Base::update_last_sent();
+		    else if (halt)
+		      return;
+		  }
 		}
 	    }
 
@@ -412,11 +422,6 @@ namespace openvpn {
 				     unsigned int& keepalive_timeout)
       {
 	Base::disable_keepalive(keepalive_ping, keepalive_timeout);
-      }
-
-      virtual void ip_hole_punch(const IP::Addr& addr)
-      {
-	tun_factory->ip_hole_punch(addr);
       }
 
       virtual void transport_pre_resolve()
@@ -600,6 +605,13 @@ namespace openvpn {
 	    else
 	      OPENVPN_LOG("Options continuation...");
 	  }
+	else if (received_options.complete() && string::starts_with(msg, "PUSH_REPLY,"))
+	{
+	  // We got a PUSH REPLY in the middle of a session. Ignore it apart from
+	  // updating the auth-token if included in the push reply
+	  auto opts = OptionList::parse_from_csv_static(msg.substr(11), nullptr);
+	  extract_auth_token(opts);
+	}
 	else if (string::starts_with(msg, "AUTH_FAILED"))
 	  {
 	    std::string reason;
@@ -648,6 +660,23 @@ namespace openvpn {
 	      info_hold->push_back(std::move(ev));
 	    else
 	      cli_events->add_event(std::move(ev));
+	  }
+	else if (info && string::starts_with(msg, "INFO_PRE,"))
+	  {
+	    // INFO_PRE is like INFO but it is never buffered
+	    ClientEvent::Base::Ptr ev = new ClientEvent::Info(msg.substr(9));
+	    cli_events->add_event(std::move(ev));
+	  }
+	else if (msg == "AUTH_PENDING")
+	  {
+	    // AUTH_PENDING indicates an out-of-band authentication step must
+	    // be performed before the server will send the PUSH_REPLY message.
+	    if (!auth_pending)
+	      {
+		auth_pending = true;
+		ClientEvent::Base::Ptr ev = new ClientEvent::AuthPending();
+		cli_events->add_event(std::move(ev));
+	      }
 	  }
 	else if (msg == "RELAY")
 	  {
@@ -702,7 +731,7 @@ namespace openvpn {
 	}
 	catch (const std::exception& e)
 	  {
-	    OPENVPN_LOG("Error parsing client-ip: " << e.what());
+	    OPENVPN_LOG("exception parsing client-ip: " << e.what());
 	  }
 	ev->tun_name = tun->tun_name();
 	connected_ = std::move(ev);
@@ -710,6 +739,8 @@ namespace openvpn {
 
       virtual void tun_error(const Error::Type fatal_err, const std::string& err_text)
       {
+	if (fatal_err == Error::TUN_HALT)
+	  send_explicit_exit_notify();
 	if (fatal_err != Error::UNDEF)
 	  {
 	    fatal_ = fatal_err;
@@ -761,9 +792,22 @@ namespace openvpn {
 	      set_housekeeping_timer();
 
 	      {
-		const Time::Duration newdur = std::min(dur + Time::Duration::seconds(1),
-						             Time::Duration::seconds(3));
-		schedule_push_request_callback(newdur);
+		if (auth_pending)
+		  {
+		    // With auth_pending, we can dial back the PUSH_REQUEST
+		    // frequency, but we still need back-and-forth network
+		    // activity to avoid an inactivity timeout, since the crypto
+		    // layer (and hence keepalive ping) is not initialized until
+		    // we receive the PUSH_REPLY from the server.
+		    schedule_push_request_callback(Time::Duration::seconds(8));
+		  }
+		else
+		  {
+		    // step function with ceiling: 1 sec, 2 secs, 3 secs, 3, 3, ...
+		    const Time::Duration newdur = std::min(dur + Time::Duration::seconds(1),
+							   Time::Duration::seconds(3));
+		    schedule_push_request_callback(newdur);
+		  }
 	      }
 	    }
 	}
@@ -780,6 +824,7 @@ namespace openvpn {
 	    push_request_timer.expires_after(dur);
 	    push_request_timer.async_wait([self=Ptr(this), dur](const openvpn_io::error_code& error)
                                           {
+                                            OPENVPN_ASYNC_HANDLER;
                                             self->send_push_request_callback(dur, error);
                                           });
 	  }
@@ -791,10 +836,16 @@ namespace openvpn {
 	uint32_t tls_warnings = get_tls_warnings();
 
 	if (tls_warnings & SSLAPI::TLS_WARN_SIG_MD5)
-	{
-	  ClientEvent::Base::Ptr ev = new ClientEvent::Warn("TLS: received certificate signed with MD5. Please inform your admin to upgrade to a stronger algorithm. Support for MD5 will be dropped at end of Apr 2018");
-	  cli_events->add_event(std::move(ev));
-	}
+	  {
+	    ClientEvent::Base::Ptr ev = new ClientEvent::Warn("TLS: received certificate signed with MD5. Please inform your admin to upgrade to a stronger algorithm. Support for MD5 will be dropped at end of Apr 2018");
+	    cli_events->add_event(std::move(ev));
+	  }
+
+	if (tls_warnings & SSLAPI::TLS_WARN_NAME_CONSTRAINTS)
+	  {
+	    ClientEvent::Base::Ptr ev = new ClientEvent::Warn("TLS: Your CA contains a 'x509v3 Name Constraints' extension, but its validation is not supported. This might be a security breach, please contact your administrator.");
+	    cli_events->add_event(std::move(ev));
+	  }
       }
 
       // base class calls here when primary session transitions to ACTIVE state
@@ -849,6 +900,7 @@ namespace openvpn {
 		housekeeping_timer.expires_at(next);
 		housekeeping_timer.async_wait([self=Ptr(this)](const openvpn_io::error_code& error)
                                               {
+                                                OPENVPN_ASYNC_HANDLER;
                                                 self->housekeeping_callback(error);
                                               });
 	      }
@@ -873,7 +925,7 @@ namespace openvpn {
 	}
 	catch (const std::exception& e)
 	  {
-	    OPENVPN_LOG("Error parsing inactive: " << e.what());
+	    OPENVPN_LOG("exception parsing inactive: " << e.what());
 	  }
       }
 
@@ -882,6 +934,7 @@ namespace openvpn {
 	inactive_timer.expires_after(inactive_duration);
 	inactive_timer.async_wait([self=Ptr(this)](const openvpn_io::error_code& error)
                                   {
+                                    OPENVPN_ASYNC_HANDLER;
                                     self->inactive_callback(error);
                                   });
       }
@@ -951,7 +1004,7 @@ namespace openvpn {
       void process_halt_restart(const ClientHalt& ch)
       {
 	if (!ch.psid() && creds)
-	  creds->can_retry_auth_with_cached_password(); // purge session ID
+	  creds->purge_session_id();
 	if (ch.restart())
 	  fatal_ = Error::CLIENT_RESTART;
 	else
@@ -972,6 +1025,7 @@ namespace openvpn {
 	info_hold_timer.expires_after(Time::Duration::seconds(1));
 	info_hold_timer.async_wait([self=Ptr(this)](const openvpn_io::error_code& error)
                                   {
+                                    OPENVPN_ASYNC_HANDLER;
                                     self->info_hold_callback(error);
                                   });
       }
@@ -1036,6 +1090,7 @@ namespace openvpn {
 
       bool first_packet_received_ = false;
       bool sent_push_request = false;
+      bool auth_pending = false;
 
       SessionStats::Ptr cli_stats;
       ClientEvent::Queue::Ptr cli_events;

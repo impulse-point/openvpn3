@@ -1,4 +1,7 @@
 import os, sys, re, stat, shutil, tarfile, zipfile, subprocess
+import requests
+import rfc6266
+import hashlib
 
 j = os.path.join
 
@@ -220,8 +223,8 @@ def vc_cmd(parms, cmd, arch=None, succeed=0):
         arch = parms['ARCH']
     if arch == "x64":
         arch = "amd64"
-    with ModEnv('PATH', "%s;%s\\VC" % (os.environ['PATH'], parms['MSVC_DIR'])):
-        status = call('vcvarsall.bat %s && %s' % (arch, cmd), shell=True, succeed=succeed)
+    with ModEnv('PATH', "%s;%s\\VC;%s\\VC\\Auxiliary\\Build;" % (os.environ['PATH'], parms['MSVC_DIR'], parms['MSVC_DIR'])):
+        call('vcvarsall.bat %s && %s' % (arch, cmd), shell=True, succeed=succeed)
 
 def vc_parms(parms, cmd_dict):
     cmd_dict["dbg_rel_flags"] = "/Zi" if parms['DEBUG'] else "/O2"
@@ -260,3 +263,55 @@ def zipdir(path, ziph):
     for root, dirs, files in os.walk(path):
         for file in files:
             ziph.write(os.path.join(root, file))
+
+def download(url):
+    print "Downloading %s" % url
+    response = requests.get(url)
+    if "Content-Disposition" in response.headers.keys():
+        fname = rfc6266.parse_headers(response.headers['Content-Disposition']).filename_unsafe
+    else:
+        fname = url.split("/")[-1]
+    with open(fname, "wb") as f:
+        f.write(response.content)
+    return fname
+
+def sha256_checksum(filename, block_size=65536):
+    sha256 = hashlib.sha256()
+    with open(filename, 'rb') as f:
+        for block in iter(lambda: f.read(block_size), b''):
+            sha256.update(block)
+    return sha256.hexdigest()
+
+def read_params():
+    if not os.environ.get('O3'):
+        sys.exit("Missing required O3 env variable")
+
+    params={}
+    params['OVPN3'] = os.environ.get('O3').rstrip()
+    if not os.environ.get('DEP_DIR'):
+        params["BUILD"] = os.path.join(params['OVPN3'], "deps")
+    else:
+        params['BUILD'] = os.environ.get('DEP_DIR').rstrip()
+    params['ARCH'] = os.environ.get('ARCH', 'amd64').rstrip()
+    params['DEBUG'] = os.environ.get('DEBUG')
+    params['STATIC'] = os.environ.get('STATIC')
+    params['MSVC_DIR'] = os.environ.get('MSVC_DIR', 'c:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional').rstrip()
+    # Community: tap0901, Access Server: tapoas
+    params['TAP_WIN_COMPONENT_ID'] = os.environ.get('TAP_WIN_COMPONENT_ID', 'tap0901')
+    params['CPP_EXTRA'] = os.environ.get('CPP_EXTRA', '').rstrip()
+    if os.environ.get('USE_JSONSPP'):
+        params['USE_JSONCPP'] = True
+    if os.environ.get('USE_JSONSPP'):
+        params['CONNECT'] = True
+    params['GTEST_ROOT'] = os.environ.get('GTEST_ROOT')
+    params['USE_OPENSSL'] = os.environ.get('USE_OPENSSL')
+
+    # read versions
+    with open(os.path.join(params['OVPN3'], "core", "deps", "lib-versions")) as f:
+        for l in [line.strip() for line in f if line.strip()]:
+            name, val = l.split("=")
+            if name.startswith("export"):
+                name = name[6:].strip()
+            params[name] = val
+
+    return params

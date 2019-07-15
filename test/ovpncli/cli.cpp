@@ -68,6 +68,10 @@
 #include <openvpn/ssl/peerinfo.hpp>
 #include <openvpn/ssl/sslchoose.hpp>
 
+#ifdef OPENVPN_REMOTE_OVERRIDE
+#include <openvpn/common/process.hpp>
+#endif
+
 #if defined(USE_MBEDTLS)
 #include <openvpn/mbedtls/util/pkcs1.hpp>
 #endif
@@ -76,13 +80,130 @@
 #include <openvpn/win/console.hpp>
 #endif
 
+#ifdef USE_NETCFG
+#include "client/core-client-netcfg.hpp"
+#endif
+
+#if defined(OPENVPN_PLATFORM_LINUX)
+
+// use SITNL by default
+#ifndef OPENVPN_USE_IPROUTE2
+#define OPENVPN_USE_SITNL
+#endif
+
+#include <openvpn/tun/linux/client/tuncli.hpp>
+
+// we use a static polymorphism and define a
+// platform-specific TunSetup class, responsible
+// for setting up tun device
+#define TUN_CLASS_SETUP TunLinuxSetup::Setup<TUN_LINUX>
+#elif defined(OPENVPN_PLATFORM_MAC)
+#include <openvpn/tun/mac/client/tuncli.hpp>
+#define TUN_CLASS_SETUP TunMac::Setup
+#endif
+
 using namespace openvpn;
 
 namespace {
   OPENVPN_SIMPLE_EXCEPTION(usage);
 }
 
-class Client : public ClientAPI::OpenVPNClient
+#ifdef USE_TUN_BUILDER
+class ClientBase : public ClientAPI::OpenVPNClient
+{
+public:
+  bool tun_builder_new() override
+  {
+    tbc.tun_builder_set_mtu(1500);
+    return true;
+  }
+
+  int tun_builder_establish() override
+  {
+    if (!tun)
+      {
+	tun.reset(new TUN_CLASS_SETUP());
+      }
+
+    TUN_CLASS_SETUP::Config config;
+    config.layer = Layer(Layer::Type::OSI_LAYER_3);
+    // no need to add bypass routes on establish since we do it on socket_protect
+    config.add_bypass_routes_on_establish = false;
+    return tun->establish(tbc, &config, nullptr, std::cout);
+  }
+
+  bool tun_builder_add_address(const std::string& address,
+			       int prefix_length,
+			       const std::string& gateway, // optional
+			       bool ipv6,
+			       bool net30) override
+  {
+    return tbc.tun_builder_add_address(address, prefix_length, gateway, ipv6, net30);
+  }
+
+  bool tun_builder_add_route(const std::string& address,
+			     int prefix_length,
+			     int metric,
+			     bool ipv6) override
+  {
+    return tbc.tun_builder_add_route(address, prefix_length, metric, ipv6);
+  }
+
+  bool tun_builder_reroute_gw(bool ipv4,
+			      bool ipv6,
+			      unsigned int flags) override
+  {
+    return tbc.tun_builder_reroute_gw(ipv4, ipv6, flags);
+  }
+
+  bool tun_builder_set_remote_address(const std::string& address,
+				      bool ipv6) override
+  {
+    return tbc.tun_builder_set_remote_address(address, ipv6);
+  }
+
+  bool tun_builder_set_session_name(const std::string& name) override
+  {
+    return tbc.tun_builder_set_session_name(name);
+  }
+
+  bool tun_builder_add_dns_server(const std::string& address, bool ipv6) override
+  {
+    return tbc.tun_builder_add_dns_server(address, ipv6);
+  }
+
+  void tun_builder_teardown(bool disconnect) override
+  {
+    std::ostringstream os;
+    auto os_print = Cleanup([&os](){ OPENVPN_LOG_STRING(os.str()); });
+    tun->destroy(os);
+  }
+
+  bool socket_protect(int socket, std::string remote, bool ipv6) override
+  {
+    (void)socket;
+    std::ostringstream os;
+    auto os_print = Cleanup([&os](){ OPENVPN_LOG_STRING(os.str()); });
+    return tun->add_bypass_route(remote, ipv6, os);
+  }
+
+private:
+  TUN_CLASS_SETUP::Ptr tun = new TUN_CLASS_SETUP();
+  TunBuilderCapture tbc;
+};
+#else // USE_TUN_BUILDER
+class ClientBase : public ClientAPI::OpenVPNClient
+{
+public:
+  bool socket_protect(int socket, std::string remote, bool ipv6) override
+  {
+    std::cout << "NOT IMPLEMENTED: *** socket_protect " << socket << " " << remote << std::endl;
+    return true;
+  }
+};
+#endif
+
+class Client : public ClientBase
 {
 public:
   enum ClockTickAction {
@@ -129,13 +250,14 @@ public:
       }
   }
 
-private:
-  virtual bool socket_protect(int socket) override
+#ifdef OPENVPN_REMOTE_OVERRIDE
+  void set_remote_override_cmd(const std::string& cmd)
   {
-    std::cout << "*** socket_protect " << socket << std::endl;
-    return true;
+    remote_override_cmd = cmd;
   }
+#endif
 
+private:
   virtual void event(const ClientAPI::Event& ev) override
   {
     std::cout << date_time() << " EVENT: " << ev.name;
@@ -304,10 +426,51 @@ private:
     return false;
   }
 
+#ifdef OPENVPN_REMOTE_OVERRIDE
+  virtual bool remote_override_enabled() override
+  {
+    return !remote_override_cmd.empty();
+  }
+
+  virtual void remote_override(ClientAPI::RemoteOverride& ro)
+  {
+    RedirectPipe::InOut pio;
+    Argv argv;
+    argv.emplace_back(remote_override_cmd);
+    OPENVPN_LOG(argv.to_string());
+    const int status = system_cmd(remote_override_cmd,
+				  argv,
+				  nullptr,
+				  pio,
+				  RedirectPipe::IGNORE_ERR);
+    if (!status)
+      {
+	const std::string out = string::first_line(pio.out);
+	OPENVPN_LOG("REMOTE OVERRIDE: " << out);
+	auto svec = string::split(out, ',');
+	if (svec.size() == 4)
+	  {
+	    ro.host = svec[0];
+	    ro.ip = svec[1];
+	    ro.port = svec[2];
+	    ro.proto = svec[3];
+	  }
+	else
+	  ro.error = "cannot parse remote-override, expecting host,ip,port,proto (at least one or both of host and ip must be defined)";
+      }
+    else
+      ro.error = "status=" + std::to_string(status);
+  }
+#endif
+
   std::mutex log_mutex;
   std::string dc_cookie;
   RandomAPI::Ptr rng;      // random data source for epki
   volatile ClockTickAction clock_tick_action = CT_UNDEF;
+
+#ifdef OPENVPN_REMOTE_OVERRIDE
+  std::string remote_override_cmd;
+#endif
 };
 
 static Client *the_client = nullptr; // GLOBAL
@@ -539,15 +702,20 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
     { "force-aes-cbc",  no_argument,        nullptr,      'f' },
     { "google-dns",     no_argument,        nullptr,      'g' },
     { "persist-tun",    no_argument,        nullptr,      'j' },
+    { "wintun",         no_argument,        nullptr,      'w' },
     { "def-keydir",     required_argument,  nullptr,      'k' },
     { "merge",          no_argument,        nullptr,      'm' },
     { "version",        no_argument,        nullptr,      'v' },
     { "auto-sess",      no_argument,        nullptr,      'a' },
+    { "auth-retry",     no_argument,        nullptr,      'Y' },
     { "tcprof-override", required_argument, nullptr,      'X' },
     { "ssl-debug",      required_argument,  nullptr,       1  },
     { "epki-cert",      required_argument,  nullptr,       2  },
     { "epki-ca",        required_argument,  nullptr,       3  },
     { "epki-key",       required_argument,  nullptr,       4  },
+#ifdef OPENVPN_REMOTE_OVERRIDE
+    { "remote-override",required_argument,  nullptr,       5  },
+#endif
     { nullptr,          0,                  nullptr,       0  }
   };
 
@@ -588,7 +756,9 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 	int sslDebugLevel = 0;
 	bool googleDnsFallback = false;
 	bool autologinSessions = false;
+	bool retryOnAuthFailed = false;
 	bool tunPersist = false;
+	bool wintun = false;
 	bool merge = false;
 	bool version = false;
 	bool altProxy = false;
@@ -596,10 +766,13 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 	std::string epki_cert_fn;
 	std::string epki_ca_fn;
 	std::string epki_key_fn;
+#ifdef OPENVPN_REMOTE_OVERRIDE
+	std::string remote_override_cmd;
+#endif
 
 	int ch;
 	optind = 1;
-	while ((ch = getopt_long(argc, argv, "BAdeTCxfgjmvau:p:r:D:P:6:s:t:c:z:M:h:q:U:W:I:G:k:X:R:", longopts, nullptr)) != -1)
+	while ((ch = getopt_long(argc, argv, "BAdeTCxfgjwmvaYu:p:r:D:P:6:s:t:c:z:M:h:q:U:W:I:G:k:X:R:", longopts, nullptr)) != -1)
 	  {
 	    switch (ch)
 	      {
@@ -615,6 +788,11 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 	      case 4: // --epki-key
 		epki_key_fn = optarg;
 		break;
+#ifdef OPENVPN_REMOTE_OVERRIDE
+	      case 5: // --remote-override
+		remote_override_cmd = optarg;
+		break;
+#endif
 	      case 'e':
 		eval = true;
 		break;
@@ -693,8 +871,14 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 	      case 'a':
 		autologinSessions = true;
 		break;
+	      case 'Y':
+		retryOnAuthFailed = true;
+		break;
 	      case 'j':
 		tunPersist = true;
+		break;
+	      case 'w':
+		wintun = true;
 		break;
 	      case 'm':
 		merge = true;
@@ -786,9 +970,11 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 	      config.sslDebugLevel = sslDebugLevel;
 	      config.googleDnsFallback = googleDnsFallback;
 	      config.autologinSessions = autologinSessions;
+	      config.retryOnAuthFailed = retryOnAuthFailed;
 	      config.tunPersist = tunPersist;
 	      config.gremlinConfig = gremlin;
 	      config.info = true;
+	      config.wintun = wintun;
 #if defined(OPENVPN_OVPNCLI_SINGLE_THREAD)
 	      config.clockTickMS = 250;
 #endif
@@ -798,9 +984,25 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 
 	      PeerInfo::Set::parse_csv(peer_info, config.peerInfo);
 
+	      // allow -s server override to reference a friendly name
+	      // in the config.
+	      //   setenv SERVER <HOST>/<FRIENDLY_NAME>
+	      if (!config.serverOverride.empty())
+		{
+		  const ClientAPI::EvalConfig eval = ClientAPI::OpenVPNClient::eval_config_static(config);
+		  for (auto &se : eval.serverList)
+		    {
+		      if (config.serverOverride == se.friendlyName)
+			{
+			  config.serverOverride = se.server;
+			  break;
+			}
+		    }
+		}
+
 	      if (eval)
 		{
-		  ClientAPI::EvalConfig eval = ClientAPI::OpenVPNClient::eval_config_static(config);
+		  const ClientAPI::EvalConfig eval = ClientAPI::OpenVPNClient::eval_config_static(config);
 		  std::cout << "EVAL PROFILE" << std::endl;
 		  std::cout << "error=" << eval.error << std::endl;
 		  std::cout << "message=" << eval.message << std::endl;
@@ -814,6 +1016,9 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 		  std::cout << "privateKeyPasswordRequired=" << eval.privateKeyPasswordRequired << std::endl;
 		  std::cout << "allowPasswordSave=" << eval.allowPasswordSave << std::endl;
 
+		  if (!config.serverOverride.empty())
+		    std::cout << "server=" << config.serverOverride << std::endl;
+
 		  for (size_t i = 0; i < eval.serverList.size(); ++i)
 		    {
 		      const ClientAPI::ServerEntry& se = eval.serverList[i];
@@ -822,8 +1027,14 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 		}
 	      else
 		{
+#if defined(USE_NETCFG)
+		  DBus conn(G_BUS_TYPE_SYSTEM);
+		  conn.Connect();
+		  NetCfgTunBuilder<Client> client(conn.GetConnection());
+#else
 		  Client client;
-		  ClientAPI::EvalConfig eval = client.eval_config(config);
+#endif
+		  const ClientAPI::EvalConfig eval = client.eval_config(config);
 		  if (eval.error)
 		    OPENVPN_THROW_EXCEPTION("eval config error: " << eval.message);
 		  if (eval.autologin)
@@ -865,6 +1076,10 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
 			OPENVPN_THROW_EXCEPTION("--epki-key must be specified");
 #endif
 		    }
+
+#ifdef OPENVPN_REMOTE_OVERRIDE
+                  client.set_remote_override_cmd(remote_override_cmd);
+#endif
 
 		  std::cout << "CONNECTING..." << std::endl;
 
@@ -908,6 +1123,9 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
       std::cout << "--proto, -P           : protocol override (udp|tcp)" << std::endl;
       std::cout << "--server, -s          : server override" << std::endl;
       std::cout << "--port, -R            : port override" << std::endl;
+#ifdef OPENVPN_REMOTE_OVERRIDE
+      std::cout << "--remote-override     : command to run to generate next remote (returning host,ip,port,proto)" << std::endl;
+#endif
       std::cout << "--ipv6, -6            : IPv6 (yes|no|default)" << std::endl;
       std::cout << "--timeout, -t         : timeout" << std::endl;
       std::cout << "--compress, -c        : compression mode (yes|no|asym)" << std::endl;
@@ -932,7 +1150,9 @@ int openvpn_client(int argc, char *argv[], const std::string* profile_content)
       std::cout << "--ssl-debug           : SSL debug level" << std::endl;
       std::cout << "--google-dns, -g      : enable Google DNS fallback" << std::endl;
       std::cout << "--auto-sess, -a       : request autologin session" << std::endl;
+      std::cout << "--auth-retry, -Y      : retry connection on auth failure" << std::endl;
       std::cout << "--persist-tun, -j     : keep TUN interface open across reconnects" << std::endl;
+      std::cout << "--wintun, -w          : use WinTun instead of TAP-Windows6 on Windows" << std::endl;
       std::cout << "--peer-info, -I       : peer info key/value list in the form K1=V1,K2=V2,..." << std::endl;
       std::cout << "--gremlin, -G         : gremlin info (send_delay_ms, recv_delay_ms, send_drop_prob, recv_drop_prob)" << std::endl;
       std::cout << "--epki-ca             : simulate external PKI cert supporting intermediate/root certs" << std::endl;

@@ -57,7 +57,6 @@
 #include <cstdint>     // for std::uint64_t
 
 #include <openvpn/common/rc.hpp>
-#include <openvpn/common/exception.hpp>
 #include <openvpn/common/size.hpp>
 #include <openvpn/common/number.hpp>
 #include <openvpn/common/hexstr.hpp>
@@ -65,10 +64,9 @@
 #include <openvpn/common/split.hpp>
 #include <openvpn/common/splitlines.hpp>
 #include <openvpn/common/unicode.hpp>
+#include <openvpn/common/option_error.hpp>
 
 namespace openvpn {
-
-  OPENVPN_EXCEPTION(option_error);
 
   class Option
   {
@@ -104,7 +102,7 @@ namespace openvpn {
     Option(T first, Args... args)
     {
       reserve(1 + sizeof...(args));
-      from_list(first, args...);
+      from_list(std::move(first), std::forward<Args>(args)...);
     }
 
     static validate_status validate(const std::string& str, const size_t max_len)
@@ -216,14 +214,15 @@ namespace openvpn {
     template <typename T>
     T get_num(const size_t idx) const
     {
-      T n;
+      typedef typename std::remove_const<T>::type T_nonconst;
+      T_nonconst n;
       const std::string& numstr = get(idx, 64);
       if (numstr.length() >= 2 && numstr[0] == '0' && numstr[1] == 'x')
 	{
 	  if (!parse_hex_number(numstr.substr(2), n))
 	    OPENVPN_THROW(option_error, err_ref() << '[' << idx << "] expecting a hex number");
 	}
-      else if (!parse_number<T>(numstr, n))
+      else if (!parse_number<T_nonconst>(numstr, n))
 	OPENVPN_THROW(option_error, err_ref() << '[' << idx << "] must be a number");
       return n;
     }
@@ -242,7 +241,16 @@ namespace openvpn {
     {
       const T ret = get_num<T>(idx, default_value);
       if (ret != default_value && (ret < min_value || ret > max_value))
-	OPENVPN_THROW(option_error, err_ref() << '[' << idx << "] must be in the range [" << min_value << ',' << max_value << ']');
+	range_error(idx, min_value, max_value);
+      return ret;
+    }
+
+    template <typename T>
+    T get_num(const size_t idx, const T min_value, const T max_value) const
+    {
+      const T ret = get_num<T>(idx);
+      if (ret < min_value || ret > max_value)
+	range_error(idx, min_value, max_value);
       return ret;
     }
 
@@ -360,8 +368,14 @@ namespace openvpn {
     template<typename T, typename... Args>
     void from_list(T first, Args... args)
     {
-      from_list(first);
-      from_list(args...);
+      from_list(std::move(first));
+      from_list(std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    void range_error(const size_t idx, const T min_value, const T max_value) const
+    {
+      OPENVPN_THROW(option_error, err_ref() << '[' << idx << "] must be in the range [" << min_value << ',' << max_value << ']');
     }
 
     volatile mutable bool touched_ = false;
@@ -660,6 +674,18 @@ namespace openvpn {
 	std::sort(begin(), end(), KeyValue::compare);
       }
     };
+
+    OptionList()
+    {
+    }
+
+    template<typename T, typename... Args>
+    OptionList(T first, Args... args)
+    {
+      reserve(1 + sizeof...(args));
+      from_list(std::move(first), std::forward<Args>(args)...);
+      update_map();
+    }
 
     static OptionList parse_from_csv_static(const std::string& str, Limits* lim)
     {
@@ -1161,6 +1187,16 @@ namespace openvpn {
 	}
     }
 
+    // Return raw C string to option data or nullptr if option doesn't exist.
+    const char *get_c_str(const std::string& name, size_t index, const size_t max_len) const
+    {
+      const Option* o = get_ptr(name);
+      if (o)
+	return o->get(index, max_len).c_str();
+      else
+	return nullptr;
+    }
+
     // Convenience method that gets a particular argument index within an option,
     // while returning a default string if option doesn't exist, and raising an
     // exception if argument index is out-of-bounds.
@@ -1195,7 +1231,8 @@ namespace openvpn {
     template <typename T>
     T get_num(const std::string& name, const size_t idx, const T default_value) const
     {
-      T n = default_value;
+      typedef typename std::remove_const<T>::type T_nonconst;
+      T_nonconst n = default_value;
       const Option* o = get_ptr(name);
       if (o)
 	n = o->get_num<T>(idx, default_value);
@@ -1206,11 +1243,19 @@ namespace openvpn {
     T get_num(const std::string& name, const size_t idx, const T default_value,
 	      const T min_value, const T max_value) const
     {
-      T n = default_value;
+      typedef typename std::remove_const<T>::type T_nonconst;
+      T_nonconst n = default_value;
       const Option* o = get_ptr(name);
       if (o)
 	n = o->get_num<T>(idx, default_value, min_value, max_value);
       return n;
+    }
+
+    template <typename T>
+    T get_num(const std::string& name, const size_t idx, const T min_value, const T max_value) const
+    {
+      const Option& o = get(name);
+      return o.get_num<T>(idx, min_value, max_value);
     }
 
     // Touch an option, if it exists.
@@ -1266,6 +1311,17 @@ namespace openvpn {
 	    ++n;
 	}
       return n;
+    }
+
+    void show_unused_options(const char *title=nullptr) const
+    {
+      // show unused options
+      if (n_unused())
+	{
+	  if (!title)
+	    title = "NOTE: Unused Options";
+	  OPENVPN_LOG_NTNL(title << std::endl << render(Option::RENDER_TRUNC_64|Option::RENDER_NUMBER|Option::RENDER_BRACKET|Option::RENDER_UNUSED));
+	}
     }
 
     // Add item to underlying option list while updating map as well.
@@ -1399,6 +1455,18 @@ namespace openvpn {
     static void line_too_long(const int line_num)
     {
       OPENVPN_THROW(option_error, "line " << line_num << " is too long");
+    }
+
+    void from_list(Option opt)
+    {
+      push_back(std::move(opt));
+    }
+
+    template<typename T, typename... Args>
+    void from_list(T first, Args... args)
+    {
+      from_list(std::move(first));
+      from_list(std::forward<Args>(args)...);
     }
 
     IndexMap map_;
