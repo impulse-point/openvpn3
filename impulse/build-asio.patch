@@ -9,3 +9,12 @@
  CSUM=${ASIO_CSUM}
  DIST=asio
  
+@@ -34,7 +34,7 @@ else
+     cd $DEP_DIR
+     rm -rf $DIST asio-$ASIO_VERSION
+     tar xfz $DL/$FNAME
+-    cd asio-$ASIO_VERSION
++    cd $ASIO_VERSION
+ 
+     apply_patches "asio"
+ 
