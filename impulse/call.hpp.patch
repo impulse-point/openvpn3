@@ -1,11 +1,13 @@
+diff --git a/openvpn/win/call.hpp b/openvpn/win/call.hpp
+index 54c2ee71..c5720ec7 100644
 --- a/openvpn/win/call.hpp
 +++ b/openvpn/win/call.hpp
 @@ -117,7 +117,7 @@ namespace openvpn {
-                          nullptr,       // process security attributes
-                          nullptr,       // primary thread security attributes
-                          TRUE,          // handles are inherited
--                         0,             // creation flags
-+                         CREATE_NO_WINDOW,             // creation flags
-                          nullptr,       // use parent's environment
-                          nullptr,       // use parent's current directory
-                          &siStartInfo,  // STARTUPINFO pointer
+ 			  nullptr,       // process security attributes
+ 			  nullptr,       // primary thread security attributes
+ 			  TRUE,          // handles are inherited
+-			  0,             // creation flags
++			  CREATE_NO_WINDOW,             // creation flags
+ 			  nullptr,       // use parent's environment
+ 			  nullptr,       // use parent's current directory
+ 			  &siStartInfo,  // STARTUPINFO pointer
